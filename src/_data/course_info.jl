@@ -7,6 +7,6 @@ Dict(
         "Pawan Bharadwaj" => "https://ceas.iisc.ac.in/author/pawan-bharadwaj/",
     ],
     "institution" => "Indian Institute of Science",
-    "institution_logo" => "iisc.svg",
+    "institution_logo" => "IISc.svg",
     "repo" => "https://github.com/pawbz/ES222.jl"
 )
