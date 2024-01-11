@@ -5,6 +5,7 @@
 #> chapter = 1
 #> section = 4
 #> order = 4
+#> layout = "layout.jlhtml"
 #> title = "Probabilistic Inverse Problems"
 #> description = "Posterior Information = Conjunction(Prior Information, Theoretical Information)."
 

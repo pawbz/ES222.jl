@@ -2,6 +2,7 @@
 # v0.19.36
 
 #> [frontmatter]
+#> chapter = "1"
 #> title = "Monte Carlo Methods"
 #> layout = "layout.jlhtml"
 #> description = "How can we balance the trade-off between taking large steps with many rejections versus taking small steps with few rejections?"

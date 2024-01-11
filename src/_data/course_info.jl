@@ -1,6 +1,6 @@
 Dict(
     "course_name" => "Data Analysis For Earth System Science",
-    "course_subtitle" => "a short catchy phrase about your course",
+    "course_subtitle" => "Turn Earth Data Into Insights",
     "code" => "ES 222",
     "semester" => "Jan 2023",
     "authors" => [

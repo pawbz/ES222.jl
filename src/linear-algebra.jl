@@ -2,7 +2,7 @@
 # v0.19.36
 
 #> [frontmatter]
-#> order = "4"
+#> order = "2"
 #> title = "Linear Algebra Primer"
 #> date = "2024-01-04"
 #> tags = ["welcome"]
@@ -258,7 +258,7 @@ A2 = randn(3) * randn(4)' .+ randn(3) * randn(4)'
 rank(A2)
 
 # ╔═╡ 12771e27-ebfe-4f88-a650-f5f9fe1b2a71
-md"Obviously, a matrix with 3 rows has full rank, if we add at least 3 rank-1 (outer products) together. To show this, we will create a vector using `for` loop in Julia."
+md"Obviously, a matrix with 3 rows has full rank if we add at least 3 rank-1 (outer products) together. To show this, we will create a matrix using `for` loop in Julia."
 
 # ╔═╡ fb6b5b19-4c70-467e-bc48-3f5a9f89591c
 rank(sum([randn(3) * randn(7)' for _ in 1:10]))
@@ -377,6 +377,7 @@ function myquiver(v, names=fill("", length(v)), colors=fill("black", length(v)),
     layout = Layout(
         title=title,
         scene=attr(
+			uirevision=1,
             aspectmode="manual", aspectratio=attr(x=1, y=1, z=1),
             xaxis=attr(
                 nticks=4,
@@ -434,9 +435,9 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
-PlutoPlotly = "~0.3.6"
-PlutoTeachingTools = "~0.2.5"
-PlutoUI = "~0.7.49"
+PlutoPlotly = "~0.4.4"
+PlutoTeachingTools = "~0.2.14"
+PlutoUI = "~0.7.54"
 Symbolics = "~5.14.1"
 """
 
@@ -446,7 +447,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "2f15882b4884ef23ec224f88b3dba792bd47ff84"
+project_hash = "50ccc8988c18be9c06c5f087a6b12ba2069e6a80"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -461,9 +462,9 @@ version = "0.34.7"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
-git-tree-sha1 = "793501dcd3fa7ce8d375a2c878dca2296232686e"
+git-tree-sha1 = "c278dfab760520b8bb7e9511b968bf4ba38b7acc"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.2.2"
+version = "1.2.3"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "faa260e4cb5aba097a73fab382dd4b5819d8ec8c"
@@ -511,6 +512,11 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.BaseDirs]]
+git-tree-sha1 = "4b41ad09c2307d5f24e36cd6f92eb41b218af22c"
+uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
+version = "1.2.1"
 
 [[deps.Bijections]]
 git-tree-sha1 = "c9b163bd832e023571e86d0b90d9de92a9879088"
@@ -626,9 +632,9 @@ version = "1.15.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "3dbd312d370723b6bb43ba9d02fc36abade4518d"
+git-tree-sha1 = "ac67408d9ddf207de5cfa9a97e114352430f01ed"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.18.15"
+version = "0.18.16"
 
 [[deps.DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -663,9 +669,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "9242eec9b7e2e14f9952e8ea1c7e31a50501d587"
+git-tree-sha1 = "a4532d110ce91bd744b99280193a317310960c46"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.104"
+version = "0.25.106"
 
     [deps.Distributions.extensions]
     DistributionsChainRulesCoreExt = "ChainRulesCore"
@@ -1031,12 +1037,6 @@ git-tree-sha1 = "949347156c25054de2db3b166c52ac4728cbad65"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.11.31"
 
-[[deps.PackageExtensionCompat]]
-git-tree-sha1 = "fb28e33b8a95c4cee25ce296c817d89cc2e53518"
-uuid = "65ce6f38-6b18-4e1d-a461-8949797d7930"
-version = "1.0.2"
-weakdeps = ["Requires", "TOML"]
-
 [[deps.Parameters]]
 deps = ["OrderedCollections", "UnPack"]
 git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
@@ -1073,16 +1073,18 @@ uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 version = "0.1.6"
 
 [[deps.PlutoPlotly]]
-deps = ["AbstractPlutoDingetjes", "Colors", "Dates", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "PackageExtensionCompat", "PlotlyBase", "PlutoUI", "Reexport"]
-git-tree-sha1 = "9a77654cdb96e8c8a0f1e56a053235a739d453fe"
+deps = ["AbstractPlutoDingetjes", "BaseDirs", "Colors", "Dates", "Downloads", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "Pkg", "PlotlyBase", "Reexport", "TOML"]
+git-tree-sha1 = "58dcb661ba1e58a13c7adce77435c3c6ac530ef9"
 uuid = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
-version = "0.3.9"
+version = "0.4.4"
 
     [deps.PlutoPlotly.extensions]
     PlotlyKaleidoExt = "PlotlyKaleido"
+    UnitfulExt = "Unitful"
 
     [deps.PlutoPlotly.weakdeps]
     PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
+    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [[deps.PlutoTeachingTools]]
 deps = ["Downloads", "HypertextLiteral", "LaTeXStrings", "Latexify", "Markdown", "PlutoLinks", "PlutoUI", "Random"]
@@ -1515,7 +1517,7 @@ version = "17.4.0+0"
 # ╠═cdd66332-8c01-4f73-ad4e-14f008be6f25
 # ╟─f25e1410-3ce1-4d44-97c5-ac5c4b40c334
 # ╟─dddfda51-ddf6-4f18-9cae-de4535199255
-# ╟─b03d542b-64b8-4a99-88e5-a0204277309c
+# ╠═b03d542b-64b8-4a99-88e5-a0204277309c
 # ╠═024a1e91-ead5-4c83-8f7b-b89377a2c08b
 # ╟─770b008b-60a1-410a-b806-e1d497d457fe
 # ╟─fec04cd7-6ff9-4780-9972-2369f2a09b22
