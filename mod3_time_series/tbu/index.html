@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
 
-<title>Fill course basic information — Data Analysis For Earth System Science </title>
+<title>To be updated — Data Analysis For Earth System Science </title>
 
 
 <link rel="root" href="../.." />
@@ -50,7 +50,7 @@ window.pluto_preamble_html = undefined;
             <li class="sidebar-about">
                 <div class="course-title">
                     <h1><a href="../.."><span>Data Analysis For Earth System Science</span></a></h1>
-                    <h2><span>a short catchy phrase about your course</span></h2>
+                    <h2><span>Turn Earth Data Into Insights</span></h2>
                 </div>
                 <div class="authors">
                     by <a href="https://ceas.iisc.ac.in/author/pawan-bharadwaj/">Pawan Bharadwaj</a>
@@ -78,25 +78,25 @@ window.pluto_preamble_html = undefined;
         <li>
 <h3>Welcome</h3>
 <ul>
-<li class=' lecture tag_welcome'><a href='../../logistics/'><span class="entry-number"></span> Class logistics</a></li><li class=' lecture tag_welcome'><a href='../../installation/'><span class="entry-number"></span> Software installation</a></li><li class=' lecture tag_welcome'><a href='../../cheatsheets/'><span class="entry-number"></span> Cheatsheets</a></li><li class=' lecture tag_welcome'><a href='../../linear-algebra/' title='Refresh your concepts of linear algebra. Thank you Gilbert Strang.'><span class="entry-number"></span> Linear Algebra Primer</a></li>
+<li class=' lecture tag_welcome'><a href='../../introduction/'><span class="entry-number"></span> Introduction</a></li><li class=' lecture tag_welcome'><a href='../../linear-algebra/' title='Refresh your concepts of linear algebra. Thank you Gilbert Strang.'><span class="entry-number"></span> Linear Algebra Primer</a></li><li class=' lecture tag_welcome'><a href='../../installation/'><span class="entry-number"></span> Software installation</a></li><li class=' lecture tag_welcome'><a href='../../cheatsheets/'><span class="entry-number"></span> Cheatsheets</a></li><li class=' lecture tag_welcome'><a href='../../classes/'><span class="entry-number"></span> Lecture Schedule</a></li><li class=' lecture tag_welcome'><a href='../../logistics/'><span class="entry-number"></span> Course Logistics</a></li><li class=' lecture tag_welcome'><a href='../../references/'><span class="entry-number"></span> References</a></li>
 </ul>
 </li>
 <li>
 <h3>Module 1: Inverse Theory</h3>
 <ul>
-<li class=' lecture tag_module1 tag_track_setup tag_teaching tag_repository_structure'><a href='../../mod1_inverse_theory/getting_started/'><span class="entry-number">1.1</span> Getting started</a></li><li class='active lecture tag_module1 tag_track_setup tag_teaching tag_metadata'><a href='../../mod1_inverse_theory/basic_info/'><span class="entry-number">1.2</span> Fill course basic information</a></li><li class=' lecture tag_module1 tag_track_setup tag_track_julia tag_PlutoSliderServer tag_pluto'><a href='../../mod1_inverse_theory/working_locally/'><span class="entry-number">1.3</span> Working locally</a></li><li class=' lecture tag_module1'><a href='../../mod1_inverse_theory/least-squares-line-fitting/'><span class="entry-number"></span> Least Squares Line Fitting</a></li>
+<li class=' lecture tag_module1'><a href='../../mod1_inverse_theory/least-squares-line-fitting/'><span class="entry-number"></span> Least Squares Line Fitting</a></li>
 </ul>
 </li>
 <li>
 <h3>Module 2: Learning</h3>
 <ul>
-<li class=' lecture tag_module2 tag_track_material tag_markdown tag_frontmatter'><a href='../../mod2_learning/add_markdown/'><span class="entry-number">2.1</span> Add markdown files</a></li><li class=' lecture tag_module2 tag_track_julia tag_track_material tag_Pluto tag_PlutoUI'><a href='../../mod2_learning/add_pluto/'><span class="entry-number">2.2</span> Add Pluto notebooks</a></li><li class=' lecture tag_module2 tag_track_julia tag_track_material tag_Pluto tag_PlutoUI tag_interactivity'><a href='../../mod2_learning/plutoui_showcase/'><span class="entry-number">2.3</span> PlutoUI showcase</a></li>
+<li class=' lecture tag_module2'><a href='../../mod2_learning/tbu/'><span class="entry-number">1.1</span> To be updated</a></li>
 </ul>
 </li>
 <li>
 <h3>Module 3: Time Series Analysis</h3>
 <ul>
-<li class=' lecture tag_module3 tag_track_setup tag_deploy tag_netlify tag_github_actions tag_github_pages'><a href='../../mod3_time_series/deploy_static/'><span class="entry-number">3.1</span> Deploy your website as static</a></li><li class=' lecture tag_module3 tag_track_setup tag_track_julia tag_deploy tag_precompute tag_Pluto tag_PlutoSliderServer'><a href='../../mod3_time_series/precompute_output/'><span class="entry-number">3.2</span> Precompute the pluto notebooks</a></li><li class=' lecture tag_module3 tag_track_setup tag_deploy tag_server tag_dynamic tag_droplet'><a href='../../mod3_time_series/setup_server/'><span class="entry-number">3.3</span> Setup a server for your website</a></li>
+<li class='active lecture tag_module3'><a href='../../mod3_time_series/tbu/'><span class="entry-number">1.1</span> To be updated</a></li>
 </ul>
 </li>
 
@@ -121,67 +121,14 @@ window.pluto_preamble_html = undefined;
         </nav>
         <div id="pages-content">
            <div class="lecture-header" >
-    <p class="number">Section 1.2</p>
-    <h1>Fill course basic information</h1>
+    <p class="number">Section 1.1</p>
+    <h1>To be updated</h1>
     
     
 </div>
         <div class="pages-markdown">
 <main>
-<h2 id="add-basic-information"><a href="#add-basic-information" class="anchor"></a>Add basic information</h2>
-<p>If you look at the homepage of the template website, you will see it has a bunch of placeholder text, such as “name of your course”, “a short catchy phrase” etc.</p>
-<p>To customize this, you will need to customize the <em>metadata</em> of the website. That is, add basic info for your class.</p>
-<p>To do so, you will need to fill the info in the files under the folder <code>src/_data</code>. Let us analyze these one by one.</p>
-<h2 id="courseinfojl"><a href="#courseinfojl" class="anchor"></a>course_info.jl</h2>
-<p>This file contains a julia <code>Dict</code> with the basic info of the class. For each key (<code>course_name</code>, <code>course_subtitle</code>, etc.) replace the corresponding placeholder with an appropriate text for your class.</p>
-<p>When filling the <code>institution_logo</code> data with the name of your university logo file, do not forget to actually put the file under <code>src/assets</code>.</p>
-<p>Authors are listed as a vector of pairs, where the first element is the author name and the second is their homepage address. If you dont have a homepage address for the author, put an empty string <code>&quot;&quot;</code>.</p>
-<h2 id="homepagejl"><a href="#homepagejl" class="anchor"></a><code>homepage.jl</code></h2>
-<p>This file contains metadata for the info displayed in the homepage, particularly</p>
-<ul>
-<li><strong><code>title</code></strong>: the title displayed on top of the homepage</li>
-<li><strong><code>disclaimer</code></strong>: the disclaimer displayed below the title. If you don’t want a disclaimer, you can remove this entry.</li>
-<li><strong><code>highlights</code></strong>: in this entry you can specify the highlights of your class, which will be displayed on the homepage. This entry should be a vector of highlights. Each entry in the vector should be a dict with the following fields
-<ul>
-<li><strong><code>name</code></strong>: the title of the highlight</li>
-<li><strong><code>text</code></strong>: short description of the highlight</li>
-<li><strong><code>img</code></strong>: link to an image summarizing the highlight</li>
-</ul>
-</li>
-</ul>
-<h2 id="sidebarjl"><a href="#sidebarjl" class="anchor"></a><code>sidebar.jl</code></h2>
-<p>In this file you can specify the sidebar of the website. All lecture materials will be grouped in <em>modules</em> in the sidebar, which are defined in this file.</p>
-<p>The modules in the file are specified as a vector of pairs, in the form</p>
-<pre><code class="language-julia">module_id =&gt; module_title
-</code></pre>
-<p>for example</p>
-<pre><code class="language-julia">&quot;module1&quot; =&gt; &quot;Week 1: Introduction to the class&quot;
-</code></pre>
-<p>To link a file to a module, you will need to add the module identifier in the page tags. For more info about this, see <a href="https://juliapluto.github.io/computational-thinking-template/add_markdown">Add frontmatter</a></p>
-<h2 id="tracksjl"><a href="#tracksjl" class="anchor"></a><code>tracks.jl</code></h2>
-<p>In this file you will specify tracks. Tracks can be used to group lectures across modules, e.g. if they have a commmon theme. When a track is selected on the sidebar, only the pages
-belonging to that track will be highlighted.</p>
-<p>Similar to modules, tracks are stored in a vector of pairs in the form</p>
-<pre><code class="language-julia">track_id =&gt; track_title
-</code></pre>
-<p>for example</p>
-<pre><code class="language-julia">&quot;julia&quot; =&gt; &quot;💻 Julia programming&quot;
-</code></pre>
-<p>To link a file to a track, you will need to add the track id, prefixed with <code>track_</code>, to the tags of the page. For example, to add a lesson to the julia track defined above, you would add the tag <code>track_julia</code> to the tags of that lesson file.</p>
-<h2 id="license"><a href="#license" class="anchor"></a>License</h2>
-<p>Choosing an appropriate license is important to make your material properly reusable.</p>
-<ul>
-<li>
-<p>For text, popular licenses are <a href="https://creativecommons.org/about/cclicenses/">Creative Commons</a>, for example <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></p>
-</li>
-<li>
-<p>For code, an <a href="https://opensource.org/licenses/">OSI open source license</a> is recommended. For example <a href="https://opensource.org/license/mit/">MIT</a> or <a href="https://opensource.org/license/apache-2-0/">Apache 2.0</a> license.</p>
-</li>
-</ul>
-<p>To add the license, open the file <code>LICENSE.md</code> and replace the text</p>
-<pre><code>&lt;insert license for your material judge&gt;
-</code></pre>
-<p>with your license(s).</p>
+<p>COMING SOON</p>
 </main>
 </div>
 
