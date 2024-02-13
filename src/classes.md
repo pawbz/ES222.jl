@@ -21,4 +21,15 @@ main a img {
 3. Left (right) inverses of a matrix with independent column (row) vectors; Gram matrix; pseudo inverses; solving linear equations with the inverses
 4. Solving inverse problems via matrix factorization; `CR` Column times Row and `QR` factorizations
 5. Example of fitting a polynomial using temperature anomaly data
-6. Example from seismic imaging: traveltime tomography
+6. Singular Value Decomposition; Factor Analysis; Examples from chemical analysis of ocean sediments, 
+7. Aalysis of spatial patterns in atmospheric pressure - Assignment
+8. Example from gravity inversion - Assignment 
+9. Coordinate Descent Algorithm, Lasso, Ridge Regression, Elastic-Net (demonstrated using the gravity problem)
+10. Example from seismic imaging: traveltime tomography
+
+
+
+Sparse Principal Component Analysis
+LASSO (ADMM)
+Split Methods
+Matrix Completion Using NeuralNetworks
