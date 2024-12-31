@@ -5,6 +5,7 @@
 #> chapter = "1"
 #> layout = "layout.jlhtml"
 #> tags = ["module1"]
+#> title = "Lasso and Elastic Net"
 
 using Markdown
 using InteractiveUtils
