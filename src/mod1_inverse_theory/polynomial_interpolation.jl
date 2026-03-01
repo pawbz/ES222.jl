@@ -1,12 +1,6 @@
 ### A Pluto.jl notebook ###
 # v0.20.21
 
-#> [frontmatter]
-#> chapter = "1"
-#> title = "Factor Analysis"
-#> tags = ["module1"]
-#> layout = "layout.jlhtml"
-
 using Markdown
 using InteractiveUtils
 
@@ -22,223 +16,287 @@ macro bind(def, element)
     #! format: on
 end
 
-# ╔═╡ abe35895-c888-4441-9a4e-94c16c91dc27
-using CSV, DataFrames, LinearAlgebra, PlutoPlotly, PlutoUI, Distributions
+# ╔═╡ 499b6d53-97a2-4ba8-a6d6-030ce1e6fa43
+using PlutoPlotly, LinearAlgebra, Distributions, PlutoUI
 
-# ╔═╡ ab1f729f-f7a9-4cf1-b1ef-7286e41bd37a
-TableOfContents()
+# ╔═╡ c8945e8c-1425-4198-bf0f-f25bf48f79d4
+md"# Polynomial Interpolation"
 
-# ╔═╡ 1a7b09b7-e614-4dff-b252-dc726d87af81
-md"""# Factor Analysis
-The purpose of this notebook is to show the importance of factoring the observed data matrix.
-"""
-
-# ╔═╡ 520c6e47-6df9-4ec9-8f48-f85ced6cb30b
-md"## Atmospheric Pressure Fluctuations"
-
-# ╔═╡ 63bdb39b-19da-4f0f-98f4-9e9506e02927
+# ╔═╡ f69ffb70-0136-4745-b0b9-233ae994fbb1
 md"""
-Perturbation of atmospheric pressure measured in `(x,y)` plane at time `t`= $(@bind it_atm Slider(1:25, show_value=true))
+Click to resample 1) $(@bind rx Button("x")) 2) $(@bind ry Button("y"))
+
+Number of Points $(@bind nx Slider(2:100, show_value=true))
+
 """
 
-# ╔═╡ 5fd30c0b-eb53-4a54-a17e-6f12be989d4f
-@bind it_atm2 Slider(1:25, show_value=true)
+# ╔═╡ 483175ed-848e-488d-bafb-ca78fe74c572
+md"""
+Set the interpolation order $(@bind order Slider(1:min(5, nx-1), show_value=true, default=nx-1))
+"""
 
-# ╔═╡ 2df4d945-2470-45b1-993b-131decdb2eae
-md"## Petrologic Database"
+# ╔═╡ ffde220e-5306-49b5-9d14-75b9465abfa3
+@bind rleft CounterButton("Resample left inverse")
 
-# ╔═╡ 1cc2d822-df8f-4fac-b8ca-770b6d1e09dd
-md"We apply factor analysis to rock chemistry data taken from a petrologic database (PetDB at www.petdb.org). This database contains chemical information on igneous and metamorphic rocks collected from the floor of all the world’s oceans, but we analyze here N 1⁄4 6356 samples from the Atlantic Ocean that have the following chemical species: SiO2, TiO2, Al2O3, FeOtotal, MgO, CaO, Na2O, and K2O (units of weight percent)."
+# ╔═╡ d3f47b43-bffe-4a42-a414-46a26d53520a
+md"Use pseudo inverse $(@bind pleft CheckBox())"
 
-# ╔═╡ 53f2cf9e-c1e6-4861-8b66-fcbe260dd6c9
-@bind resample_data CounterButton("Resample Data")
+# ╔═╡ a51dabc7-f553-4a73-83cd-639bab59c3e3
+md"## Vandermonde Matrix"
 
-# ╔═╡ cc80419d-f255-4ba9-a2a9-d52d2d6fd014
-element_names = ["SiO₂", "TiO₂", "Al₂O₃","FeO", "MgO", "CaO", "Na₂O", "K₂O"]
+# ╔═╡ 7981a992-f356-4a81-957e-25abcf863acc
+function vandermonde_matrix(x, order)
+	# Create a matrix where each column is x^(n) for n=0 to order
+	return hcat([x .^ i for i in 0:order]...)
+end
 
-# ╔═╡ fd2938e0-a187-41ef-9fe2-f5f0c262de1e
+# ╔═╡ 5ff641f3-e01e-424d-8102-768d70eb61dc
+function left_inverse(A::AbstractMatrix)
+    if size(A, 1) < size(A, 2)
+        error("Matrix A must have more rows than columns (tall matrix) to compute a left inverse.")
+    end
+    ATA = A' * A
+    if rank(ATA) < size(A, 2)
+        error("Matrix A does not have full column rank, so a left inverse does not exist.")
+    end
+    return inv(ATA) * A'
+end
+
+# ╔═╡ e409ea2d-839e-4ff2-9af4-8895af49e1a6
+function random_left_inverse(G::AbstractMatrix)
+	"""
+	Compute a random left inverse of the G matrix.
+	Each call produces a different left inverse solution.
+	"""
+	m, n = size(G)
+	
+	if m < n
+		error("Matrix G must have more rows than columns (tall matrix) to compute a left inverse.")
+	end
+	
+	# Add random noise to G to create different left inverses
+	G_perturbed = G + randn(m, n) * 10
+	
+	# Compute left inverse of perturbed matrix
+	G_pert_squared = G_perturbed' * G_perturbed
+	if rank(G_pert_squared) < n
+		# Fall back to standard method if perturbed matrix is singular
+		return left_inverse(G)
+	end
+	
+	return inv(G_pert_squared) * G_perturbed'
+end
+
+# ╔═╡ bb2435ab-29f8-4807-9413-c2e4fa43c2e8
+begin
+	rx
+	x = sample(range(0, 10, length=100), nx; replace=false)
+end
+
+# ╔═╡ 993fccc7-b400-45b8-be3c-75c21ca1e514
+# Construct Vandermonde matrix
+V = vandermonde_matrix(x, order)
+
+# ╔═╡ f2e9876a-bd82-4610-9d12-f9587c22a73a
+rank(V)
+
+# ╔═╡ f1d70250-44d1-4d19-92c9-e34aac4f3c96
+begin
+	rleft
+	Vi = left_inverse(V)
+	# Vi = random_left_inverse(V)
+end
+
+# ╔═╡ 2967d9ba-93d8-49d1-bf29-a2e216cb3930
+plot(Vi[4, :])
+
+# ╔═╡ 3fc91fe8-b8ed-4ebc-af13-223f358fc73d
+begin
+	ry
+	y = randn(nx)
+end
+
+# ╔═╡ 1f5c732e-934d-4f3d-866a-68cb505e78f2
+mest = Vi * y
+
+# ╔═╡ 979570a2-8237-4ec3-9606-558a49cae95c
 md"## Appendix"
 
-# ╔═╡ e9950ad0-73d1-4fd1-8c37-85fc486d6e21
-md"### Data"
+# ╔═╡ b99d90e0-effd-4246-aa3f-f985c04cbc84
+md"### Plotting"
 
-# ╔═╡ 2c79c088-b36d-11ee-085e-99f73de45b76
-rocks = let 
-	r = CSV.read("rocks.txt", DataFrame, header=false)
-	Array(r) ./ std(Array(r), dims=1)
-end
+# ╔═╡ 3c7594a9-1cd5-4e6a-80fd-526ef6b50f6b
+num_points = 500
 
-# ╔═╡ f27ca787-11ed-4870-945a-e1e4fd28f855
-nsamples = size(rocks, 1)
+# ╔═╡ 0d04d946-cd1d-43a1-b266-57ea5236659d
+# Generate fine points for plotting
+x_fine = range(0, 10, length=num_points)
 
-# ╔═╡ 8cde1452-e939-44e0-832f-3c08608972f0
-nelements = size(rocks, 2)
-
-# ╔═╡ 4fbdb49b-65ca-4b53-999d-5b98472aede1
-s = svd(Array(rocks)')
-
-# ╔═╡ a02a64d3-b09e-4cf7-ad08-fec927a5fc53
-plot(s.S, Layout(title="Singular Values"))
-
-# ╔═╡ 1e156962-8b97-4fec-9935-afe45c9ae076
-s.U
-
-# ╔═╡ 1622b850-73f5-4b1d-9538-b7e19b089985
-std(Array(rocks), dims=1)
-
-# ╔═╡ 0a71bb66-8156-4c81-ab7b-d6f8b0214b28
-Array(rocks)
-
-# ╔═╡ 01114f95-f1b7-4410-ae2b-32af961bfee7
+# ╔═╡ 9fb5f1d5-75dd-4677-af12-e9ada2c15be8
 begin
-	mountains=zeros(15,11);
-	mountains[1,:] = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0];
-	mountains[2,:] = [0, 2, 3, 4, 5, 6, 5, 4, 3, 1, 0];
-	mountains[3,:] = [0, 1, 2, 4, 5, 6, 5, 4, 2, 1, 0];
-	mountains[4,:] = [0, 1, 3, 5, 5, 4.5, 4, 3.5, 3, 2.5, 0];
-	mountains[5,:] = reverse(mountains[4,:]);
-	mountains[6,:] = [0, 6, 6, 6, 5, 5, 5, 3.5, 2, 1, 0];
-	mountains[7,:] = reverse(mountains[6,:]);
-	mountains[8,:] = [0, 0.25, 0.5, 1, 3, 6, 3, 1, 0.5, 0.25, 0];
-	mountains[9,:] = [0, 1, 2.5, 3, 4, 6, 4, 3, 2.5, 1, 0];
-	mountains[10,:] = [0, 1, 2, 4, 6, 4, 2, 1, 1, 0.5, 0];
-	mountains[1,:] = reverse(mountains[10,:]);
-	mountains[12,:] = [0, 0, 0.5, 0, 1, 1, 2, 4, 6, 3, 0];
-	mountains[13,:] = reverse(mountains[12,:]);
-	mountains[14,:] = [0, 0, 0.5, 1, 3, 6, 5.5, 5.5, 4.5, 3.5, 0];
-	mountains[15,:] = reverse(mountains[14,:]);
-end;
+	Vi_cols = []
+	for i in 1:size(V, 2)
+	    # Compute Lagrange basis polynomial
+	    basis_poly = Vi[:, i]
+	    y_basis = [sum(basis_poly .* (xi .^ (0:order))) for xi in x_fine]
+		push!(Vi_cols, y_basis)
+	end
+end
 
-# ╔═╡ fa431790-c3ce-43e8-9a76-1f8d07153a9c
-function get_atm_pressure_data()
-	Nx=20
-	Nx2=Nx*Nx
-	dx=1.0
-	L = dx*(Nx-1)
-	x = (dx*collect(0:Nx-1))'
-	m0 = zeros(Nx,Nx);
-	m1 = zeros(Nx,Nx);
-	m2 = zeros(Nx,Nx);
-	for p = 1:Nx
-	for q = 1:Nx
-     	m0[p,q] = sin(pi*x[p]/L).*sin(pi*x[q]/L);
-     	m1[p,q] = sin(pi*x[p]/L).*sin(2*pi*x[q]/L);
-     	m2[p,q] = sin(2*pi*x[p]/L).*sin(3*pi*x[q]/L);
+# ╔═╡ cdfaf26f-7e21-4e37-8145-a86ea862a6c6
+ function plot_Vi_cols()
+	 # Add a trace for each basis polynomial
+	traces = [scatter(x=x_fine, y=Vi_cols[i], mode="lines", name="Basis L$i(x)")
+	for i in 1:size(V, 2)]
+
+	push!(traces, scatter(x=x, y=y, mode="markers", name="Data Points", marker=attr(size=8, color="red")))
+	  layout = Layout(
+        title="Lagrange Polynomials",
+        xaxis=attr(title="x", range=(0, 10)),
+        yaxis=attr(title="y", range=(-1, 1)),
+		  legend=attr(
+            orientation="h",  # Horizontal legend
+            xanchor="center",
+            yanchor="top",
+            x=0.5,            # Center horizontally
+            y=-0.2            # Position below the plot
+        )
+    )
+
+	 plot(traces, layout)
+ end
+
+# ╔═╡ f70b6ec7-7d6c-4e02-b794-578d4e9901cf
+plot_Vi_cols()
+
+# ╔═╡ d88e7b2a-d7e3-11ef-1b53-11c03c7b3656
+begin	
+	# Function to compute polynomial coefficients
+	function polynomial_interpolation(x, y, order, rleft)
+	    # Ensure the input has at least (order + 1) points
+	    if length(x) < order + 1
+	        error("Number of points must be at least equal to the polynomial order + 1.")
+	    end
+	
+	   if(pleft)
+	return pinv(V) * y
+	   else
+	    # Solve for coefficients using least squares
+	    return random_left_inverse(V) * y
+	   end
+		 
 	end
+	
+	# Function to evaluate the polynomial
+	function evaluate_polynomial(coeffs, x)
+	    # Compute the polynomial value at x using the coefficients
+	    return sum(c * x^(i-1) for (i, c) in enumerate(coeffs))
 	end
+	
+	# Function to interpolate and plot
+	function demo_polynomial_interpolation(x, y, order, rleft)
+	    # Compute polynomial coefficients
+	    coeffs = polynomial_interpolation(x, y, order, rleft)
+	
+	    
+	    y_fine = [evaluate_polynomial(coeffs, xi) for xi in x_fine]
+
+
+		   interpolated_trace = scatter(
+        x=x_fine,
+        y=y_fine,
+        mode="lines",
+        line=attr(width=2, color="blue"),
+        name="Interpolated Polynomial (Order $order)"
+    )
+
+    # Create the original points scatter trace
+    points_trace = scatter(
+        x=x,
+        y=y,
+        mode="markers",
+        marker=attr(size=10, color="red"),
+        name="Original Points"
+    )
+
+    # Define the layout
+    layout = Layout(
+        title="Polynomial Interpolation",
+        xaxis_title="x",
+		xaxis_range=(0, 10),
+		yaxis_range=(-10, 10),
+        yaxis_title="y",
+		legend=attr(
+            orientation="h",  # Horizontal legend
+            xanchor="center",
+            yanchor="top",
+            x=0.5,            # Center horizontally
+            y=-0.2            # Position below the plot
+        )
+    )
+
+    # Combine the traces into a single plot
+    return plot(Plot([interpolated_trace, points_trace], layout))
+
+
 		
-	# build data with modes with these amplitudes at different times
-	c0 = [1, -1, 1, -1, 1,   -1, 1, -1, 1, -1,     1, -1, 1, -1, 1,     -1, 1, -1, 1, -1,    1, -1, 1, -1, 1 ]';
-	c1 = [1, 2, 3, 4, 5,     5, 4, 3, 2, 1,        1, 2, 3, 4, 5,        5, 4, 3, 2, 1,      1, 2, 3, 4, 5 ]';
-	c2 = [0, 0, 0, 1, 2,     3, 2, 1, 0, 0,        0, 0, 1, 2, 1,        0, 0, 0, 0, 0,      1, 2, 3, 2, 1 ]';
-
-	Nt = 25;
-	D = zeros(Nx, Nx, Nt)
-	for it in 1:Nt
-		  D[:,:,it] .= c0[it]*m0 + c1[it]*m1 + c2[it]*m2 + 0.7 * randn(Nx,Nx);
-	end
-	return D
-end
-
-# ╔═╡ 88345a4f-aab7-4615-9795-020838f62292
-atm_pressure = get_atm_pressure_data()
-
-# ╔═╡ 126cacd6-8508-44e5-ba04-06a0704b4d17
-plot(heatmap(z=atm_pressure[:,:, it_atm], colorscale="jet", showscale=false), Layout(title="t=$it_atm", width=200, height=200,xaxis=attr(showticklabels=false), yaxis=attr(showticklabels=false)))
-# plot(heatmap(z=randn(32, 32), colorscale="jet", showscale=false), Layout(title="t=$it_atm", width=200, height=200,xaxis=attr(showticklabels=false), yaxis=attr(showticklabels=false)))
-
-# ╔═╡ 82fd02c2-26db-476b-b989-9d22c9853314
-atm_pressure;
-
-# ╔═╡ 0c19ea23-5e47-4724-8fa8-fd6023aa1aa3
-size(atm_pressure)
-
-# ╔═╡ ae553ef5-5e41-4b6c-9d7e-43195f86c46e
-data_matrix_atm_pressure = reshape(atm_pressure, :, 25)
-
-# ╔═╡ 1d5aaf6e-dad5-431f-bc98-488d6910f6fa
-s_atm = svd(data_matrix_atm_pressure);
-
-# ╔═╡ 2eddc7d2-d132-4abd-8d1c-6831ed933925
-s_atm.Vt
-
-# ╔═╡ 3544c9db-8d55-4abc-aed7-f89a1e6199ac
-s_atm.U
-
-# ╔═╡ 4859bd18-892f-4479-b9b8-be89260095f7
-s_atm.S
-
-# ╔═╡ c6d8b56e-50e7-44df-b78c-0b654cb72630
-data_matrix_atm_pressure_hat = s_atm.U * Diagonal(s_atm.S) * s_atm.Vt
-
-# ╔═╡ fbaf05be-8e3d-4b0b-8722-1c4838855728
-C = s_atm.U; R = Diagonal(s_atm.S) * s_atm.Vt;
-
-# ╔═╡ 573fb34d-98aa-4ed7-a1a8-bd3a2f6448e4
-size(C)
-
-# ╔═╡ 6f81aec1-0752-4b88-b844-2468056e301a
-plot(heatmap(z=reshape(C[:, it_atm2], 20, 20), colorscale="jet", showscale=false), Layout(title="Left Singular Vector $it_atm2", width=200, height=200,xaxis=attr(showticklabels=false), yaxis=attr(showticklabels=false)))
-
-# ╔═╡ 91bfbd85-74fb-419b-82e9-d81d42058bdd
-plot(R[1, :])
-
-# ╔═╡ ab75c417-232c-4e12-93f6-126a17dc0198
-plot(R[2, :])
-
-# ╔═╡ 12a2613e-b34b-472a-a1d2-4a375d24d3cf
-plot(R[3, :])
-
-# ╔═╡ be788b71-db91-45c1-95c4-2aa6bbdcdb50
-plot(R[4, :])
-
-# ╔═╡ 84ee7809-b9f8-4a22-9ed3-abbd1bdd81b8
-plot(R[5, :])
-
-# ╔═╡ 28c524db-f495-4284-b9a9-7198431b9106
-C*R ≈ data_matrix_atm_pressure
-
-# ╔═╡ 3e211600-9924-4405-bc53-15a3accb400a
-data_matrix_atm_pressure ≈ data_matrix_atm_pressure_hat
-
-# ╔═╡ 09a71c9a-804d-49e7-9d9f-cdb6188b9959
-md"### Plots"
-
-# ╔═╡ cccd6ea4-5040-46eb-b67a-106846ad3f72
-function sample_plot(z, title)
-	plot(heatmap(y=element_names, z=z, showscale=false, zmin=-1,zmax=1,colorscale="Blackbody"), Layout(title=string(title), width=125, xaxis=attr(showticklabels=false)))
-end
-
-# ╔═╡ 03f08f45-690b-4bd4-976d-e1d7b1360431
-let 
-	resample_data
-	R = transpose(Array(rocks))
-	map(rand(1:nsamples, 5)) do i
-		sample_plot(log.(R[:, i:i]), i)
 	end
 end
 
-# ╔═╡ 1c5f4e96-3ed1-4797-97e2-68d3399c41a4
-map(1:5) do i
-	sample_plot(s.U[:,i:i], i)
+# ╔═╡ d64509fb-524e-4e38-9846-b51899f75a34
+demo_polynomial_interpolation(x, y, order, rleft)
+
+# ╔═╡ c587ed62-f0f7-11f0-8215-4f59427f0c4e
+# ╠═╡ disabled = true
+#=╠═╡
+function random_left_inverse(G::AbstractMatrix)
+    """
+    Compute a left inverse of the G matrix using a randomized approach.
+    
+    This function computes the left inverse (A_left) such that A_left * G = I,
+    where I is the identity matrix. The randomization adds a random null space
+    component to create a random solution among all possible left inverses.
+    """
+    m, n = size(G)
+    
+    if m < n
+        error("Matrix G must have more rows than columns (tall matrix) to compute a left inverse.")
+    end
+    
+    # Compute the standard left inverse
+    G_left = left_inverse(G)
+    
+    # Compute a basis for the null space of G' (columns of G transposed)
+    # This gives us the freedom to add random components
+    F = svd(G')
+    null_space_dim = sum(F.S .< 1e-10)  # Number of small singular values
+    
+    if null_space_dim > 0
+        # Extract null space basis vectors
+        null_space = F.V[:, (n - null_space_dim + 1):end]
+        
+        # Add a random component from the null space
+        random_component = null_space * randn(null_space_dim)
+        return G_left + random_component * G'
+    else
+        # If there's no null space, return the standard left inverse
+        return G_left
+    end
 end
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PlutoPlotly = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-CSV = "~0.10.15"
-DataFrames = "~1.7.0"
 Distributions = "~0.25.115"
-PlutoPlotly = "~0.5.0"
-PlutoUI = "~0.7.61"
+PlutoPlotly = "~0.4.6"
+PlutoUI = "~0.7.60"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -247,7 +305,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.12.4"
 manifest_format = "2.0"
-project_hash = "92bc8f2a3e194212d2937ad821d061fd07355fb2"
+project_hash = "421ee1fff511dfef2c5c00bd6114a657b4771e81"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -278,23 +336,11 @@ git-tree-sha1 = "cb25e4b105cc927052c2314f8291854ea59bf70a"
 uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
 version = "1.2.4"
 
-[[deps.CSV]]
-deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
-git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
-uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.10.15"
-
-[[deps.CodecZlib]]
-deps = ["TranscodingStreams", "Zlib_jll"]
-git-tree-sha1 = "bce6804e5e6044c6daab27bb533d1295e4a2e759"
-uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
-version = "0.7.6"
-
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "26ec26c98ae1453c692efded2b17e15125a5bea1"
+git-tree-sha1 = "c785dfb1b3bfddd1da557e861b919819b82bbe5b"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.28.0"
+version = "3.27.1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -333,32 +379,16 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.3.0+1"
 
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
-
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.16.0"
-
-[[deps.DataFrames]]
-deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "fb61b4812c49343d7ef0b533ba982c46021938a6"
-uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.7.0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
 git-tree-sha1 = "1d0a14036acb104d9e89698bd408f63ab58cdc82"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 version = "0.18.20"
-
-[[deps.DataValueInterfaces]]
-git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
-uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
-version = "1.0.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -398,17 +428,6 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.7.0"
 
-[[deps.FilePathsBase]]
-deps = ["Compat", "Dates"]
-git-tree-sha1 = "7878ff7172a8e6beedd1dea14bd27c3c6340d361"
-uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
-version = "0.9.22"
-weakdeps = ["Mmap", "Test"]
-
-    [deps.FilePathsBase.extensions]
-    FilePathsBaseMmapExt = "Mmap"
-    FilePathsBaseTestExt = "Test"
-
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 version = "1.11.0"
@@ -430,11 +449,6 @@ deps = ["Statistics"]
 git-tree-sha1 = "05882d6995ae5c12bb5f36dd2ed3f61c98cbb172"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.5"
-
-[[deps.Future]]
-deps = ["Random"]
-uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
-version = "1.11.0"
 
 [[deps.HypergeometricFunctions]]
 deps = ["LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
@@ -460,38 +474,15 @@ git-tree-sha1 = "b6d6bfdd7ce25b0f9b2f6b3dd56b2673a66c8770"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.5"
 
-[[deps.InlineStrings]]
-git-tree-sha1 = "45521d31238e87ee9f9732561bfee12d4eebd52d"
-uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
-version = "1.4.2"
-
-    [deps.InlineStrings.extensions]
-    ArrowTypesExt = "ArrowTypes"
-    ParsersExt = "Parsers"
-
-    [deps.InlineStrings.weakdeps]
-    ArrowTypes = "31f734f8-188a-4ce0-8406-c8a06bd891cd"
-    Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 version = "1.11.0"
 
-[[deps.InvertedIndices]]
-git-tree-sha1 = "6da3c4316095de0f5ee2ebd875df8721e7e0bdbe"
-uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
-version = "1.3.1"
-
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
 version = "0.2.2"
-
-[[deps.IteratorInterfaceExtensions]]
-git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
-uuid = "82899510-4779-5014-852e-03e436cf321d"
-version = "1.0.0"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
@@ -570,9 +561,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 version = "1.11.0"
 
 [[deps.MIMEs]]
-git-tree-sha1 = "1833212fd6f580c20d4291da9c1b4e8a655b128e"
+git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
 uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
-version = "1.0.0"
+version = "0.1.4"
 
 [[deps.Markdown]]
 deps = ["Base64", "JuliaSyntaxHighlighting", "StyledStrings"]
@@ -619,9 +610,9 @@ uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.6+0"
 
 [[deps.OrderedCollections]]
-git-tree-sha1 = "cc4054e898b852042d7b503313f7ad03de99c3dd"
+git-tree-sha1 = "12f1439c4f986bb868acda6ea33ebc78e19b95ad"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.8.0"
+version = "1.7.0"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -657,10 +648,10 @@ uuid = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 version = "0.8.19"
 
 [[deps.PlutoPlotly]]
-deps = ["AbstractPlutoDingetjes", "Artifacts", "BaseDirs", "Colors", "Dates", "Downloads", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "Pkg", "PlotlyBase", "Reexport", "TOML"]
-git-tree-sha1 = "653b48f9c4170343c43c2ea0267e451b68d69051"
+deps = ["AbstractPlutoDingetjes", "BaseDirs", "Colors", "Dates", "Downloads", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "Pkg", "PlotlyBase", "Reexport", "TOML"]
+git-tree-sha1 = "1ae939782a5ce9a004484eab5416411c7190d3ce"
 uuid = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
-version = "0.5.0"
+version = "0.4.6"
 
     [deps.PlutoPlotly.extensions]
     PlotlyKaleidoExt = "PlotlyKaleido"
@@ -672,15 +663,9 @@ version = "0.5.0"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "7e71a55b87222942f0f9337be62e26b1f103d3e4"
+git-tree-sha1 = "eba4810d5e6a01f612b948c9fa94f905b49087b0"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.61"
-
-[[deps.PooledArrays]]
-deps = ["DataAPI", "Future"]
-git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
-uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.3"
+version = "0.7.60"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
@@ -693,12 +678,6 @@ deps = ["TOML"]
 git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.3"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -758,12 +737,6 @@ version = "0.5.1+0"
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
-
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "712fb0231ee6f9120e005ccd56297abbc053e7e0"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.4.8"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -832,12 +805,6 @@ version = "1.3.2"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "a6b1675a536c5ad1a60e5a5153e1fee12eb146e3"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.0"
-
 [[deps.StyledStrings]]
 uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 version = "1.11.0"
@@ -856,18 +823,6 @@ deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 version = "1.0.3"
 
-[[deps.TableTraits]]
-deps = ["IteratorInterfaceExtensions"]
-git-tree-sha1 = "c06b2f539df1c6efa794486abfb6ed2022561a39"
-uuid = "3783bdb8-4a98-5b6b-af9a-565f29a5fe9c"
-version = "1.0.1"
-
-[[deps.Tables]]
-deps = ["DataAPI", "DataValueInterfaces", "IteratorInterfaceExtensions", "OrderedCollections", "TableTraits"]
-git-tree-sha1 = "598cd7c1f68d1e205689b1c2fe65a9f85846f297"
-uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
-version = "1.12.0"
-
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
@@ -884,15 +839,10 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
 
-[[deps.TranscodingStreams]]
-git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
-uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.11.3"
-
 [[deps.Tricks]]
-git-tree-sha1 = "6cae795a5a9313bbb4f60683f7263318fc7d1505"
+git-tree-sha1 = "7822b97e99a1672bfb1b49b668a6d46d58d8cbcb"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.10"
+version = "0.1.9"
 
 [[deps.URIs]]
 git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
@@ -912,17 +862,6 @@ version = "1.0.2"
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
-
-[[deps.WeakRefStrings]]
-deps = ["DataAPI", "InlineStrings", "Parsers"]
-git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
-uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
-version = "1.4.2"
-
-[[deps.WorkerUtilities]]
-git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
-uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
-version = "1.6.1"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
@@ -946,51 +885,32 @@ version = "17.7.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═ab1f729f-f7a9-4cf1-b1ef-7286e41bd37a
-# ╟─1a7b09b7-e614-4dff-b252-dc726d87af81
-# ╟─520c6e47-6df9-4ec9-8f48-f85ced6cb30b
-# ╟─63bdb39b-19da-4f0f-98f4-9e9506e02927
-# ╟─126cacd6-8508-44e5-ba04-06a0704b4d17
-# ╠═82fd02c2-26db-476b-b989-9d22c9853314
-# ╠═0c19ea23-5e47-4724-8fa8-fd6023aa1aa3
-# ╠═ae553ef5-5e41-4b6c-9d7e-43195f86c46e
-# ╠═1d5aaf6e-dad5-431f-bc98-488d6910f6fa
-# ╠═2eddc7d2-d132-4abd-8d1c-6831ed933925
-# ╠═3544c9db-8d55-4abc-aed7-f89a1e6199ac
-# ╠═4859bd18-892f-4479-b9b8-be89260095f7
-# ╠═c6d8b56e-50e7-44df-b78c-0b654cb72630
-# ╠═fbaf05be-8e3d-4b0b-8722-1c4838855728
-# ╠═28c524db-f495-4284-b9a9-7198431b9106
-# ╠═573fb34d-98aa-4ed7-a1a8-bd3a2f6448e4
-# ╠═5fd30c0b-eb53-4a54-a17e-6f12be989d4f
-# ╟─6f81aec1-0752-4b88-b844-2468056e301a
-# ╠═3e211600-9924-4405-bc53-15a3accb400a
-# ╠═91bfbd85-74fb-419b-82e9-d81d42058bdd
-# ╠═ab75c417-232c-4e12-93f6-126a17dc0198
-# ╠═12a2613e-b34b-472a-a1d2-4a375d24d3cf
-# ╠═be788b71-db91-45c1-95c4-2aa6bbdcdb50
-# ╠═84ee7809-b9f8-4a22-9ed3-abbd1bdd81b8
-# ╟─2df4d945-2470-45b1-993b-131decdb2eae
-# ╟─1cc2d822-df8f-4fac-b8ca-770b6d1e09dd
-# ╠═f27ca787-11ed-4870-945a-e1e4fd28f855
-# ╠═8cde1452-e939-44e0-832f-3c08608972f0
-# ╟─53f2cf9e-c1e6-4861-8b66-fcbe260dd6c9
-# ╠═03f08f45-690b-4bd4-976d-e1d7b1360431
-# ╟─a02a64d3-b09e-4cf7-ad08-fec927a5fc53
-# ╠═1c5f4e96-3ed1-4797-97e2-68d3399c41a4
-# ╠═4fbdb49b-65ca-4b53-999d-5b98472aede1
-# ╠═1e156962-8b97-4fec-9935-afe45c9ae076
-# ╠═cc80419d-f255-4ba9-a2a9-d52d2d6fd014
-# ╟─fd2938e0-a187-41ef-9fe2-f5f0c262de1e
-# ╠═abe35895-c888-4441-9a4e-94c16c91dc27
-# ╟─e9950ad0-73d1-4fd1-8c37-85fc486d6e21
-# ╠═2c79c088-b36d-11ee-085e-99f73de45b76
-# ╠═1622b850-73f5-4b1d-9538-b7e19b089985
-# ╠═0a71bb66-8156-4c81-ab7b-d6f8b0214b28
-# ╠═01114f95-f1b7-4410-ae2b-32af961bfee7
-# ╠═fa431790-c3ce-43e8-9a76-1f8d07153a9c
-# ╠═88345a4f-aab7-4615-9795-020838f62292
-# ╟─09a71c9a-804d-49e7-9d9f-cdb6188b9959
-# ╠═cccd6ea4-5040-46eb-b67a-106846ad3f72
+# ╠═499b6d53-97a2-4ba8-a6d6-030ce1e6fa43
+# ╟─c8945e8c-1425-4198-bf0f-f25bf48f79d4
+# ╟─f69ffb70-0136-4745-b0b9-233ae994fbb1
+# ╟─483175ed-848e-488d-bafb-ca78fe74c572
+# ╟─ffde220e-5306-49b5-9d14-75b9465abfa3
+# ╟─d3f47b43-bffe-4a42-a414-46a26d53520a
+# ╠═d64509fb-524e-4e38-9846-b51899f75a34
+# ╟─f70b6ec7-7d6c-4e02-b794-578d4e9901cf
+# ╟─a51dabc7-f553-4a73-83cd-639bab59c3e3
+# ╠═7981a992-f356-4a81-957e-25abcf863acc
+# ╠═993fccc7-b400-45b8-be3c-75c21ca1e514
+# ╠═f2e9876a-bd82-4610-9d12-f9587c22a73a
+# ╠═5ff641f3-e01e-424d-8102-768d70eb61dc
+# ╠═f1d70250-44d1-4d19-92c9-e34aac4f3c96
+# ╠═e409ea2d-839e-4ff2-9af4-8895af49e1a6
+# ╠═1f5c732e-934d-4f3d-866a-68cb505e78f2
+# ╠═9fb5f1d5-75dd-4677-af12-e9ada2c15be8
+# ╠═cdfaf26f-7e21-4e37-8145-a86ea862a6c6
+# ╠═2967d9ba-93d8-49d1-bf29-a2e216cb3930
+# ╠═d88e7b2a-d7e3-11ef-1b53-11c03c7b3656
+# ╠═bb2435ab-29f8-4807-9413-c2e4fa43c2e8
+# ╠═3fc91fe8-b8ed-4ebc-af13-223f358fc73d
+# ╟─979570a2-8237-4ec3-9606-558a49cae95c
+# ╟─b99d90e0-effd-4246-aa3f-f985c04cbc84
+# ╠═3c7594a9-1cd5-4e6a-80fd-526ef6b50f6b
+# ╠═0d04d946-cd1d-43a1-b266-57ea5236659d
+# ╠═c587ed62-f0f7-11f0-8215-4f59427f0c4e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

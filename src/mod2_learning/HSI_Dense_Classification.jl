@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.21
+# v0.20.4
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     #! format: off
-    return quote
+    quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
@@ -16,229 +16,559 @@ macro bind(def, element)
     #! format: on
 end
 
-# ╔═╡ c95c3d37-9760-41de-a64f-6ce1f6bdf982
-using PlutoPlotly, LinearAlgebra, Flux, PlutoUI, Statistics, Distributions, PlutoHooks, PlutoLinks
+# ╔═╡ a84cf814-da60-11ee-2e7f-ab47f6aa1f96
+using Flux, MAT, PlutoPlotly, Random, PlutoUI, Statistics, PlutoTeachingTools, MLUtils, PGFPlotsX,ColorSchemes, Colors
 
-# ╔═╡ 403a7451-b633-4f84-8ace-44c011d3d9ae
-TableOfContents()
+# ╔═╡ b558420f-78f5-42cd-a77f-f82ace74fdf4
+ChooseDisplayMode()
 
-# ╔═╡ 77991f90-5945-4460-bc0f-791ba40a3bfe
-md"""# Introduction to Deep Learning
-This notebook aims to provide basic intuition attached to neural networks. Specifically, we will consider shallow, fully-connected neural networks with relu activation. We will understand how these networks represent a family of piecewise linear regions. This leads to the universal approximation theorem. Then, we train the models for a simple 1-D regression example to demonstrate the concepts of noise, bias, and variance and their tradeoffs. We used `Flux.jl`.
+# ╔═╡ 6337cae9-4e8b-47a9-a235-5513a4239e90
+TableOfContents(include_definitions=true)
+
+# ╔═╡ 8ecf7c28-81f0-40e2-8858-3d8dcf43e6e7
+md"""# Hyperspectral Imaging: Using Neural Network to Classify Land Cover Type
+
+Hyperspectral imaging (HSI) is a technique that captures images across a broad range of wavelengths for each pixel, providing detailed spectral signatures that are unique to the materials present. These signatures, composed of light intensity across different wavelengths, offer a rich dataset that reveals the chemical and physical properties of objects.
+
+In this demonstration, we'll apply neural networks to classify land cover types in the Kennedy Space Center (KSC) hyperspectral dataset. This dataset encompasses 224 spectral bands, each 10 nm wide, spanning center wavelengths from 400 nm to 2500 nm. After removing bands affected by water absorption, we are left with 176 useful bands. By feeding the network with spectral fingerprints from the KSC dataset, each associated with a known land cover type, the goal is for the neural network to learn the intricate patterns within these data. This enables it to accurately classify land cover types in new, unseen HSI data. This approach not only showcases the application of machine learning in analyzing complex, high-dimensional datasets but also highlights its potential in environmental and earth science research, particularly in land cover classification.
+
 """
 
-# ╔═╡ 02f43452-e282-11ee-1f91-b9156211e10b
-begin
-	xmin = -2
-	xmax = 2
-	x = collect(range(xmin, xmax, length=1000))
-	xm = Float32.(reshape(x, 1, :)) # to be used as input for dense layers
+# ╔═╡ 2de60ebc-f486-434f-921d-e56ca1858668
+md"#### Viz. spectra across different vegetation and land cover classes"
+
+# ╔═╡ b289c46d-909c-4cea-b2b8-e415d23c39b9
+md"Select number of samples per class: 
+
+$(@bind nsamp1 Slider(vcat([1],5:5:50),default=10, show_value=true))"
+
+# ╔═╡ bf7e8696-0f93-4e0f-bfdc-233606f0c104
+md"""##### Let's now split this data into training, validation and test sets"""
+
+# ╔═╡ 24edcbfb-cf12-4820-9aad-94ad131594e5
+md"""#### Train Split Ratio $(@bind train_ratio Slider(0.05:0.05:0.75, default=0.3, show_value=true))"""
+
+# ╔═╡ 9c84d4a7-67f0-41e2-8e79-f8a4c67fc871
+md"""#### Validation Split Ratio $(@bind val_ratio Slider(0.1:0.05:0.2, default=0.2, show_value=true))"""
+
+# ╔═╡ c097520c-5523-45d6-931c-1981779401fb
+md"""#### Thus, Test Split Ratio = $(round(1.0 - train_ratio - val_ratio,digits=2))""" #Test ratio is implicitly determined)
+
+# ╔═╡ dfe7f96e-ea3d-4897-a509-b492a76aabd3
+md"""##### Choose Dropout Rate $(@bind dropout_rate Slider(0:0.1:1, default=0, show_value=true))
+by default, zero dropout means no regularization"""
+
+# ╔═╡ 82802806-062e-4bb4-998c-6486d47d7c93
+md"Let's select the number of epochs to train our network"
+
+# ╔═╡ 4e84a3da-e0d8-40cb-a7f3-20045c1e553e
+md"##### Number of Epochs to train: $(@bind num_epochs NumberField(0:1000, default=100))"
+
+# ╔═╡ 40dfaa16-ddb5-45dc-a3b5-c15833251690
+md"""#### Ready to Train?: $(@bind ready_to_train CheckBox(default=false))"""
+
+# ╔═╡ d4e600cd-ddae-4e1c-a866-4e6dc2d45fab
+@bind restart_training Button("Restart Training Model")
+
+# ╔═╡ 7205c2f2-7cd3-43f3-b118-6b2d7cd264b2
+@bind train_model Button("Train Model for $(num_epochs) epochs")
+
+# ╔═╡ 16cb10e0-062c-44e2-a590-5089cb42b906
+md"## Dense Model"
+
+# ╔═╡ 563199e1-5824-4269-ac4c-8f431aff2a15
+md"We choose crossentropy as the loss function"
+
+# ╔═╡ 20f446d5-d308-44c3-94d2-22c1b9e4f9eb
+function train_step!(model, x, y, opt)
+    loss, grads = Flux.withgradient(model) do m
+        Flux.Losses.crossentropy(m(x), y)
+    end
+    Flux.Optimisers.update!(opt, Flux.params(model), grads)
+    return loss
 end
 
-# ╔═╡ 8a9a4dba-d8da-4403-be02-67286383f500
-md"## Shallow Neural Networks"
+# ╔═╡ b543ac43-165b-4073-ab7c-26af4c354ef9
+(@bind learn_rate Slider([1e-6,5e-6,1e-5,5e-5,1e-4,5e-4,1e-3,5e-3,1e-2,5e-2,1e-1],default=0.0001,show_value=true))
 
-# ╔═╡ 5fb67e83-90d7-4f42-9070-e2949b4de776
-md"## Activation Function"
+# ╔═╡ e603c18a-61e0-4a05-9a30-60db6f3b2329
+begin
+md"Choosing ADAM optimizer with learning rate= $(learn_rate)"
 
-# ╔═╡ 7ec58dd0-fd0c-4937-ae52-2d0a5252a574
-plot(scatter(x=x,y=relu.(x)), Layout(width=350, height=250))
 
-# ╔═╡ 72a68c72-6afd-4af0-a8e2-c8962cc42949
-Markdown.MD(Markdown.Admonition("warning", "Universal Approximation Theorem",
-    [md"""
-The universal approximation theorem proves that for any continuous function, there exists a shallow network that can approximate this function to any specified precision.
-- Intuition: Every time we add a hidden unit, we add another linear region to the function. As these regions become more numerous, they represent smaller sections of the function, which are increasingly well approximated by a line. 
-"""]))
+end
 
-# ╔═╡ 403c9123-9abd-4732-b12e-40c0ab2d9624
-ntrain_datasets=10
+# ╔═╡ 19704724-ea33-4e9f-82ce-ba510df8cbed
+opt = ADAM(learn_rate)
 
-# ╔═╡ cf3f542e-574f-4005-a6e9-6a41710943cd
-md"## Deep Neural Networks"
+# ╔═╡ f3e26da4-f228-4d47-9b1b-f704ad679979
+begin
+	if ready_to_train
+	md"""#### Ready for Testing?: $(@bind ready_to_test CheckBox(default=false))"""
+	end
+end
 
-# ╔═╡ 7009d7ae-91a6-4499-89ea-2dfb2d2874b0
-md"## Matrix Notation"
+# ╔═╡ 48bc8aec-a524-41f3-8a6d-e7d0a8e948e8
+md"## Load Data"
 
-# ╔═╡ 6c84542f-6392-4acb-9cfb-f526a1e58586
+# ╔═╡ cd0ff342-2b73-497f-bc05-315535a19d6a
+hsi_image = let
+   	file = matopen("KSC_corrected.mat")
+    hsi_image = read(file)
+    close(file)
+	hsi_image["KSC"]
+end
+
+# ╔═╡ b951a822-43b6-4f40-9801-038bb6d48c83
+@bind nband_plot Slider(1:size(hsi_image, 3), show_value=true)
+
+# ╔═╡ b5c5655b-a21a-48d8-aadc-42b599dd3913
+begin
+    file = matopen("gtspectra.mat")
+    data_dict1 = read(file)
+    close(file)
+end
+
+# ╔═╡ 448c68bc-e3e1-48d4-bb3a-f1476a874b8e
+data_dict1
+
+# ╔═╡ 2166aad7-654c-4f74-be80-c3c668082b29
+begin
+class_names=[1 => "Scrub", 2 => "Willow Swamp", 3 => "CP Hammock", 4 => "CP/Oak Hammock", 5 => "Slash Pine", 6 => "Oak Hammock", 7 => "Hardwood Swamp", 8 => "Graminoid Marsh", 9 => "Spartina Marsh", 10 => "Typha Marsh", 11 => "Salt Marsh", 12 => "Mud Flats", 13 => "Water Body"]
+nothing
+end
+
+# ╔═╡ 1830d036-caca-4303-a37d-df0af6cdce85
+@bind sampleclasses MultiCheckBox(class_names,default=[1],select_all=true)
+
+# ╔═╡ 92377dd7-d87d-4876-905c-2ed929373e04
+palette = distinguishable_colors(length(class_names))[[5,10,4,1,8,13,3,9,6,11,12,2,7]]
+
+# ╔═╡ e9b49e45-8dd4-4099-a90a-bba1961f41f3
+begin
+	global_min = Inf
+	global_max = -Inf
+	
+	for key in keys(data_dict1)
+	    class_min = minimum(data_dict1[key])
+	    class_max = maximum(data_dict1[key])
+	    global_min = min(global_min, class_min)
+	    global_max = max(global_max, class_max)
+	end
+	
+end
+
+# ╔═╡ 403f14b3-cec7-4665-988c-4f7451b843b8
+function min_max_normalize(data)
+    return (data .- global_min) ./ (global_max - global_min)
+end
+
+# ╔═╡ 6ce37aac-308c-438d-9faf-d459b5d59e49
+begin
+	data_dict=Dict()
+	for key in keys(data_dict1)
+    	data_dict[key] = min_max_normalize(data_dict1[key])
+	end
+end
+
+# ╔═╡ c741237f-3f7f-437c-bfe1-58e55f6f5208
+begin
+	function split_data(data, ratios)
+	    n = size(data, 2)
+	    idx = randperm(n)
+	    train_end = floor(Int, ratios[1] * n)
+	    val_end = train_end + floor(Int, ratios[2] * n)
+	    
+	    train_idx = idx[1:train_end]
+	    val_idx = idx[train_end+1:val_end]
+	    test_idx = idx[val_end+1:end]
+	    
+	    train_data = data[:, train_idx]
+	    val_data = data[:, val_idx]
+	    test_data = data[:, test_idx]
+	    
+	    return train_data, val_data, test_data
+	end
+	
+	train_sets = Dict()
+	val_sets = Dict()
+	test_sets = Dict()
+	
+	ratios = [train_ratio, val_ratio] # Assume test_ratio is implicitly determined
+	
+	for (key, class_data) in data_dict
+	    train_data, val_data, test_data = split_data(class_data, ratios)
+	    train_sets[key] = train_data
+	    val_sets[key] = val_data
+	    test_sets[key] = test_data
+	end
+end
+
+# ╔═╡ b0d5e340-4e96-4e82-843b-1b852d8dc998
+begin
+	restart_training
+	ratios;
+model = Chain(
+    Dense(size(train_sets[first(keys(train_sets))], 1), 64, leakyrelu),
+    Dropout(dropout_rate),
+    Dense(64, 32, leakyrelu),
+    Dropout(dropout_rate),
+    Dense(32, length(keys(data_dict))),
+	softmax
+)
+end
+
+# ╔═╡ 4f4f65d8-d2ba-4623-82d7-a9285ab305d8
+begin
+	# Initialize variables for storing losses and accuracies
+	restart_training
+	model;
+	ratios;
+	train_losses = Float64[]
+	val_losses = Float64[]
+	train_accuracies = Float64[]
+	val_accuracies = Float64[]
+	nothing
+end
+
+# ╔═╡ 55c6826d-b5ec-4fad-aff0-e03acd82f7d8
+function create_data_loader(data, labels, batch_size; shuffle=true)
+    indices = 1:size(data, 2)
+    if shuffle
+        indices = Random.shuffle(indices)
+    end
+    
+    batches = [(data[:, inds], labels[:, inds]) for inds in Iterators.partition(indices, batch_size)]
+    
+    return batches
+end
+
+
+# ╔═╡ fb3d3acb-6cd6-4c21-8264-7812bc8fadaa
+md"## Losses"
+
+# ╔═╡ b61aa604-7d3a-4f37-964d-2855814da34b
+function evaluate_loss(model, data_loader)
+    losses = []
+    for (x, y) in data_loader
+        push!(losses, Flux.Losses.logitcrossentropy(model(x), y))
+    end
+    return mean(losses)
+end
+
+
+# ╔═╡ 56699515-93fb-48a4-81ec-e829a4d5d8bf
+function one_hot_encode(labels, num_classes)
+    Flux.onehotbatch(labels, 1:num_classes)
+end
+
+# ╔═╡ fdfeaa22-53af-47dc-b80d-2f5ef8056fb4
+function prepare_dataset(data_dict, num_classes)
+    data = []
+    labels = []
+    for (class_id, class_data) in enumerate(values(data_dict))
+        push!(data, class_data)
+        push!(labels, fill(class_id, size(class_data, 2)))
+    end
+    data = hcat(data...)
+    labels = vcat(labels...)
+    one_hot_labels = one_hot_encode(labels, num_classes)
+    return data, one_hot_labels
+end
+
+
+# ╔═╡ 3dff8826-5856-41ce-83e6-4248f69254f9
+begin
+	num_classes = length(keys(data_dict)) # Assuming this is known
+	train_data, train_labels = prepare_dataset(train_sets, num_classes)
+	val_data, val_labels = prepare_dataset(val_sets, num_classes)
+	
+	batch_size = 32
+	train_loader = create_data_loader(train_data, train_labels, batch_size)
+	val_loader = create_data_loader(val_data, val_labels, batch_size)
+	nothing
+end
+
+# ╔═╡ d24dbfa8-2248-4ed5-8315-4578f810aa9d
+# Prepare the test dataset
+	test_data, test_labels = prepare_dataset(test_sets, num_classes);
+
+# ╔═╡ 558abb89-6c28-4aa0-a517-bd858a2987ab
+# Create the test loader
+	test_loader = create_data_loader(test_data, test_labels, batch_size, shuffle=false);  # Typically, shuffling is not needed for the test set
+
+# ╔═╡ a68f8bd2-edc5-4bda-a5a0-610f45e507ab
+# Define a function to plot your losses
+function plot_losses(train_losses, val_losses)
+    plot(1:length(train_losses), train_losses, label="Train", xlabel="Epoch", ylabel="Loss", legend=:topright,w=2)
+    plot!(1:length(val_losses), val_losses, label="Validation",w=2)
+end
+
+# ╔═╡ 37848c52-9eab-45c8-94f2-079c2fca1890
+function calculate_accuracy(model, data_loader)
+    total_correct = 0
+    total = 0
+    for (x_batch, y_batch) in data_loader
+        predictions = model(x_batch)
+        predicted_labels = argmax(predictions, dims=1)
+        actual_labels = argmax(y_batch, dims=1)
+        total_correct += sum(predicted_labels .== actual_labels)
+        total += length(actual_labels)
+    end
+    accuracy = total_correct / total
+    return accuracy
+end
+
+
+# ╔═╡ 97bc9368-c075-4dc7-baab-10f3fad29cf6
+# ╠═╡ show_logs = false
+begin
+	if ready_to_train
+		restart_training
+		train_model
+	for epoch in 1:num_epochs
+	    for (x_batch, y_batch) in train_loader
+	        train_step!(model, x_batch, y_batch, opt)
+	    end
+	    
+	    push!(train_losses, evaluate_loss(model, train_loader))
+	    push!(val_losses, evaluate_loss(model, val_loader))
+	
+		# Calculate accuracies
+	    train_accuracy = calculate_accuracy(model, train_loader)
+	    val_accuracy = calculate_accuracy(model, val_loader)
+	    
+	    push!(train_accuracies, train_accuracy)
+	    push!(val_accuracies, val_accuracy)
+		
+	end
+	end
+    # Update the plot; in Pluto, just call the plotting function again with the updated data
+	#plot_losses_and_accuracies(train_losses,val_losses,train_accuracies,val_accuracies)
+    #plot_losses(train_losses, val_losses)
+end
+
+# ╔═╡ f2976b0c-16a3-43b9-abbf-064b9b8ed0c0
+# ╠═╡ show_logs = false
+begin
+	if ready_to_train
+		train_model
+		restart_training
+	md"""##### Total epochs trained: $(length(train_losses))
+	##### Current Training Accuracy: $(round(100*calculate_accuracy(model, train_loader),digits=2))%
+	##### Current Validation Accuracy: $(round(100*calculate_accuracy(model, val_loader),digits=2))%
+	"""
+	end
+end
+
+# ╔═╡ 867e36e9-2c6e-4d88-b37c-e7af9b905a6e
+# ╠═╡ show_logs = false
+begin
+	if ready_to_train
+		if ready_to_test
+			train_model
+			restart_training
+		md"### Test Accuracy: $(round(100*calculate_accuracy(model, test_loader),digits=2))%"
+		end
+	end
+end
+
+# ╔═╡ b87c44f1-ea75-4591-a530-a8b7007fa829
+f1(x) = x[1]
+
+# ╔═╡ 103b7a79-0481-40d0-9376-0fcb188310e2
+function calculate_accuracy_per_class(model, data_loader, num_classes)
+    correct_predictions = zeros(Int, num_classes)
+    total_predictions = zeros(Int, num_classes)
+    
+    for (x_batch, y_batch) in data_loader
+        predictions = model(Float32.(x_batch))
+        predicted_labels = f1.(argmax(predictions, dims=1))
+        actual_labels = f1.(argmax(y_batch, dims=1))
+        
+        for i = 1:length(actual_labels)
+            total_predictions[actual_labels[i]] += 1
+            correct_predictions[actual_labels[i]] += (predicted_labels[i] == actual_labels[i])
+        end
+    end
+    
+    accuracies = correct_predictions ./ total_predictions
+    return accuracies
+end
+
+
+# ╔═╡ 279ae9fd-db44-49d7-bb2e-36e79a4bc1b8
+f2(x) = x[2]
+
+# ╔═╡ 54cf2024-0805-44fc-b47d-28f9ee5a98b4
 md"## Appendix"
 
-# ╔═╡ a8137b75-bde6-4914-8969-8074485ba269
-md"### UI"
-
-# ╔═╡ c20e9ee0-f951-4c04-98b1-0ca901c40fb8
-function gui_input()
-	
-	return PlutoUI.combine() do Child
-		
-		inputs = [
-			md""" Network Width: $(
-				Child("network_width", Slider(3:100, show_value=true)))
-		    Train Samples: $(
-				Child("ntrain_samples", Slider(3:100, show_value=true))
-			)
-			""",
-			md"""
-			$(Child("resample_data", CounterButton("Regenerate Training Data")))
-			$(Child("new_network", CounterButton("Reinitialize Network")))
-			$(Child("retrain", CounterButton("Train Network")))
-			$(Child("reset_plot", CounterButton("Reset Plot")))
-			"""
-		]
-		
-		md"""
-		$(inputs)
-		"""
-	end
-end
-
-# ╔═╡ 9c513a1b-9965-4f10-ad34-4da47f901594
-trainui = @bind para gui_input()
-
-# ╔═╡ e4554baf-cd2e-4746-94a1-394295ae433b
-trainui
-
-# ╔═╡ d06240cd-26da-4fc9-912e-c44b129f25b9
-trainui
-
-# ╔═╡ 9f1cbb44-e142-43be-8997-76cef329f562
-trainui
-
-# ╔═╡ a1dead6b-2900-4565-b571-c55cd28b2216
-# ╠═╡ show_logs = false
-training_datasets = @use_memo([para.resample_data, para.ntrain_samples, ntrain_datasets]) do
-	xtrain = Float32.(reshape(rand(Uniform(xmin, xmax), para.ntrain_samples), 1, :))
-	training_datasets = map(1:ntrain_datasets) do i
-	 
-	ytrain = Float32.(sin.(2.0 .* xtrain)) + 0.1 * randn(1, para.ntrain_samples)  
-	loader = Flux.DataLoader((xtrain, ytrain), batchsize=5, shuffle=true)
-	return (; xtrain, ytrain, loader)
-	end
-	training_datasets
-end
-
-# ╔═╡ 5eeeb73e-3b82-4c91-acfd-73a3c4f64ef3
-shallow_fig = @use_memo([para.resample_data, para.reset_plot]) do 
-	(; xtrain, ytrain) = training_datasets[1]
-	return plot([scatter(x=vec(xtrain), y=vec(ytrain), mode="markers", name="training data"), scatter(x=vec(x), y=vec(sin.(2.0 * x)), name="true function", line=attr(color="black")) ], Layout(width=350, height=250, title="Testing Learned Models", yaxis=attr(range=(-2, 2)),legend=attr(
-        x=1,
-        y=-0.5,
-        yanchor="bottom",
-        xanchor="right",
-        orientation="h"
-    ),))
-end;
-
-# ╔═╡ ab659f09-4549-406a-a878-8a0289e5aded
-md"### Model"
-
-# ╔═╡ 07d725f5-6c77-4788-a37f-b17d7334a15a
+# ╔═╡ 8564af9c-eb34-4697-a6ea-65caf0f92236
 begin
-	struct Affine
-	  W
-	  b
-	end
-	
-	Affine(in::Integer, out::Integer) =
-	  Affine(randn(out, in), randn(out))
-	
-	# Overload call, so the object can be used as a function
-	(m::Affine)(x) = m.W * x .+ m.b
-	
-	a = Affine(10, 5)
-	Flux.@layer Affine
+	sf = 0.7 #scaling factor for plot attributes used later
+	nothing
 end
 
-# ╔═╡ d95e5eea-bc1d-47ad-8dd3-bb021b3ddb40
-models, optims = @use_memo([para.new_network, para.network_width]) do
-	models = [Chain(Affine(1, para.network_width), relu, Affine(para.network_width, 1
-)) for i in 1:ntrain_datasets]
-	optims = [Flux.setup(Flux.Adam(0.001), model) for model in models]
-	models, optims
+# ╔═╡ 06834053-704e-4285-9b6f-2861ef903a73
+md"### Plots"
+
+# ╔═╡ e92f9986-2f7d-4a42-9d4d-652629c4fcf0
+sampleclasses
+
+# ╔═╡ a6034db6-a6f0-4ad2-a9da-77b9c34ae572
+function show_hsi_band_heatmap(hsi_image::Array{T,3}, band::Int; cmap="seismic") where T
+    if band < 1 || band > size(hsi_image, 3)
+        error("Invalid band index. Must be between 1 and $(size(hsi_image, 3)).")
+    end
+
+    # Extract the specific band
+    band_image = hsi_image[:, :, band]
+
+    # Normalize the values to [0,1] for better visualization
+    band_min, band_max = minimum(band_image), maximum(band_image)
+    normalized_image = (band_image .- band_min) ./ (band_max - band_min)
+
+    # Create heatmap
+    heatmap_plot = plot(heatmap(z=normalized_image, colorscale=cmap), Layout(width=200, height=600, title="Band $band"))
+
+    return heatmap_plot
 end
 
-# ╔═╡ 1af2dd91-b941-44d1-b672-c3c17c52ec6f
-# ╠═╡ show_logs = false
-trained = @use_memo([para.retrain]) do 
-	map(1:ntrain_datasets) do i
-		loader = training_datasets[i].loader
-		model = models[i]
-		for epoch in 1:300
-    		Flux.train!(model, loader, optims[i]) do m, x, y
-        		y_hat = m(x)
-        		Flux.mse(y_hat, y)
-    		end
-		end
-		color = (i==1) ? "red" : "gray"
-		opacity = (i==1) ? 1.0 : 0.5
-		width = (i==1) ? 1.0 : 2.0
-		
-		add_trace!(shallow_fig, scatter(opacity=opacity, x=vec(x), y=vec(models[i](reshape(Float32.(x), 1, :))), line=attr(width=1, color=color),showlegend=false) )
-	end
-	return randn()
-end
+# ╔═╡ 8da1878d-b095-4c04-b74b-16b01d533b60
+show_hsi_band_heatmap(hsi_image, nband_plot)
 
-# ╔═╡ 074f3b47-07e3-4c49-945c-30031a1cb05e
-begin
-	para
-	trained
-	shallow_fig 
-end
-
-# ╔═╡ 5e8c668c-9351-4b11-bf2e-394a157a445f
-model = models[1]
-
-# ╔═╡ b7914fd2-6dfc-45b6-a7c5-8f4d1e3f65e0
-h = collect.(eachslice(model.layers[1](xm), dims=1))
-
-# ╔═╡ 94a392fc-9b4d-4ceb-8dda-5ac489974e43
-plot([scatter(x=x, y=plotitem) for plotitem in h], Layout(width=350, height=250, showlegend=false, title="hᵢ = θ1ᵢ + x * θ2ᵢ"))
-
-# ╔═╡ e6608faa-d490-4f4b-8083-ea5f99b76d2a
-ha = collect.(eachslice(model.layers[2](model.layers[1](xm)), dims=1))
-
-# ╔═╡ 203eff4a-3b41-475f-b1fa-2c6fd8276c75
-plot([scatter(x=x, y=plotitem) for plotitem in ha], Layout(width=350, height=250, showlegend=false, title="a(hᵢ)"))
-
-# ╔═╡ e1f9fdce-1de7-40eb-af35-8c712b5af665
-y = model(xm)
-
-# ╔═╡ 0eb2daf1-f9dd-4489-8e13-74d6baab2c43
-plot([scatter(x=x, y=plotitem) for plotitem in [vec(y)]], Layout(width=350, height=250, title="y=ϕ + ∑ᵢ ϕᵢ a(hᵢ)"))
-
-# ╔═╡ b4be38ab-4bf4-46bf-a815-c944674d4f2a
-md"""### References
-[^book]: Prince, Simon JD. Understanding Deep Learning. MIT press, 2023.
+# ╔═╡ 33477bef-ab18-479d-ba5d-e6d1391bb3ea
 """
+    generate_plot1(x, nsam)
+
+Generates an interactive plot showing the spectra of different land classes using PlutoPlotly.
+
+# Arguments:
+- `x`: Indices of the land classes to plot.
+- `nsam`: Number of random samples per class.
+"""
+function generate_spectra_plot(x, nsam)
+	nband = size(data_dict[class_names[x[1]][2]], 1)
+   traces = [
+        scatter(
+            x=1:nband,  # Band index
+            y=randobs(data_dict[class_names[i][2]]),  # Reflectance values
+            mode="lines",
+            name=class_names[i][2],
+            opacity=0.7,
+            line=attr(color=hex(palette[i]), width=1)
+        )
+        for  j in 1:nsam, i in x
+    ]
+
+    # Create the interactive plot layout
+    layout = Layout(
+		showlegend=true,
+        title="Spectra of Land Classes",
+        xaxis_title="Band Index",
+        yaxis_title="Normalized Reflectance",
+        yaxis=attr(range=[0, 1]),  # Ensures all values fit
+        # legend=attr(x=1, y=1),
+        width=800, height=500
+    )
+
+    return plot(vec(traces), layout)
+end
+
+# ╔═╡ 38d6f1c4-aa16-47b4-bf11-b859f96153fc
+generate_spectra_plot(sampleclasses,nsamp1)
+
+# ╔═╡ 4ac4554f-51fd-427f-b4ff-32f45990bf12
+generate_spectra_plot(sampleclasses,nsamp1)
+
+# ╔═╡ ea962bb4-2eb9-4291-a87c-382eb6e13cdd
+class_names
+
+# ╔═╡ d333d01e-b38b-4863-b9b3-f25891c55484
+function plot_losses_and_accuracies(train_losses, val_losses, train_accuracies, val_accuracies)
+	sf1=sf*1
+    p1 = plot(1:length(train_losses), train_losses, label="Train Loss", xlabel="Epoch", ylabel="Loss", legend=:topright, w=1)
+    plot!(p1, 1:length(val_losses), val_losses, label="Validation Loss", w=1,yaxis=:log10,
+		titlefontsize=round(32*sf1),tickfontsize=round(16*sf1), legendfontsize=round(16*sf1),
+    xguidefontsize=round(24*sf1),yguidefontsize=round(24*sf1))
+    
+    p2 = plot(1:length(train_accuracies), train_accuracies, label="Train Accuracy", xlabel="Epoch", ylabel="Accuracy", legend=:bottomright, w=1)
+    plot!(p2, 1:length(val_accuracies), val_accuracies, label="Validation Accuracy", w=1,
+		titlefontsize=round(32*sf1),tickfontsize=round(16*sf1), legendfontsize=round(16*sf1),ylims=[0,1],
+    xguidefontsize=round(24*sf1),yguidefontsize=round(24*sf1))
+	
+    plot(p1, p2, layout=(2, 1), size=(2*600*0.6, 2*600*0.6))
+end
+
+
+# ╔═╡ d4d60e04-03ee-4f4f-a60d-42051765f282
+begin
+	if ready_to_train	
+		restart_training
+		train_model
+		model;
+		if length(train_losses)!=0
+			plot_losses_and_accuracies(train_losses,val_losses,train_accuracies,val_accuracies)
+		end
+	end
+end
+
+# ╔═╡ 9da24bca-a159-4774-a906-c1897c4cd89d
+function plot_class_accuracies(class_accuracies)
+    bar(collect(1:13)',class_accuracies', legend=false, xlabel="Class", ylabel="Accuracy", title="Test Accuracy per Spectral Class",size=(1500,800),
+		xticks=(1:13,replace.(collect(keys(data_dict1))," "=>"\n")),
+		fillcolor=palette[[findfirst(isequal(i),getindex.(class_names,2)) for i in keys(data_dict)]]',
+	titlefontsize=round(32*sf),tickfontsize=round(20*sf), legendfontsize=round(24*sf),
+    xguidefontsize=round(24*sf),yguidefontsize=round(24*sf),)
+end
+
+# ╔═╡ dadf6b6b-2f20-45f1-ae40-5c8e4d1b221c
+begin
+	if ready_to_train
+		if ready_to_test
+			train_model
+			restart_training
+		class_accuracies = calculate_accuracy_per_class(model, test_loader, num_classes)
+		plot_output = plot_class_accuracies(class_accuracies)
+		end
+	end
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-PlutoHooks = "0ff47ea0-7a50-410d-8455-4348d5de0774"
-PlutoLinks = "0ff47ea0-7a50-410d-8455-4348d5de0420"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+MLUtils = "f1d291b0-491e-4a28-83b9-f70985020b54"
+PGFPlotsX = "8314cec4-20b6-5062-9cdb-752b83310925"
 PlutoPlotly = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
+PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Distributions = "~0.25.107"
-Flux = "~0.14.13"
-PlutoHooks = "~0.0.5"
-PlutoLinks = "~0.1.6"
-PlutoPlotly = "~0.4.5"
-PlutoUI = "~0.7.58"
+ColorSchemes = "~3.29.0"
+Colors = "~0.13.0"
+Flux = "~0.16.3"
+MAT = "~0.10.7"
+MLUtils = "~0.4.7"
+PGFPlotsX = "~1.6.2"
+PlutoPlotly = "~0.3.4"
+PlutoTeachingTools = "~0.3.1"
+PlutoUI = "~0.7.61"
+Statistics = "~1.11.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.4"
+julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "c5413fe7087d05758d9b9f2df8b6a65a7a58a44b"
+project_hash = "0e7be10ddd4a826e759055677abd320711add04a"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -313,9 +643,9 @@ version = "1.11.0"
 
 [[deps.Atomix]]
 deps = ["UnsafeAtomics"]
-git-tree-sha1 = "93da6c8228993b0052e358ad592ee7c1eccaa639"
+git-tree-sha1 = "b5bb4dc6248fde467be2a863eb8452993e74d402"
 uuid = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
-version = "1.1.0"
+version = "1.1.1"
 
     [deps.Atomix.extensions]
     AtomixCUDAExt = "CUDA"
@@ -355,15 +685,15 @@ version = "0.4.4"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
-[[deps.BaseDirs]]
-git-tree-sha1 = "cb25e4b105cc927052c2314f8291854ea59bf70a"
-uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
-version = "1.2.4"
-
 [[deps.Baselet]]
 git-tree-sha1 = "aebf55e6d7795e02ca500a689d326ac979aaf89e"
 uuid = "9718e550-a3fa-408a-8086-8db961cd8217"
 version = "0.1.1"
+
+[[deps.BufferedStreams]]
+git-tree-sha1 = "6863c5b7fc997eadcabdbaf6c5f201dc30032643"
+uuid = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
+version = "1.2.2"
 
 [[deps.CEnum]]
 git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
@@ -392,6 +722,12 @@ git-tree-sha1 = "7eee164f122511d3e4e1ebadb7956939ea7e1c77"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
 version = "1.3.6"
 
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "962834c22b66e32aa10f7611c08c8ca4e20749a9"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.8"
+
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
 git-tree-sha1 = "403f2d8e209681fcbd9468a8514efff3ea08452e"
@@ -416,9 +752,9 @@ weakdeps = ["SpecialFunctions"]
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
+git-tree-sha1 = "64e15186f0aa277e174aa81798f7eb8598e0157e"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.12.11"
+version = "0.13.0"
 
 [[deps.CommonSubexpressions]]
 deps = ["MacroTools"]
@@ -439,7 +775,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.3.0+1"
+version = "1.1.1+0"
 
 [[deps.CompositionsBase]]
 git-tree-sha1 = "802bb88cd69dfd1509f6670416bd4434015693ad"
@@ -492,6 +828,12 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
+[[deps.DefaultApplication]]
+deps = ["InteractiveUtils"]
+git-tree-sha1 = "c0dfa5a35710a193d83f03124356eef3386688fc"
+uuid = "3f0dd361-4fe0-5fc6-8523-80b14ec94d85"
+version = "1.1.0"
+
 [[deps.DefineSingletons]]
 git-tree-sha1 = "0fba8b706d0178b4dc7fd44a96a92382c9065c2c"
 uuid = "244e2a9f-e319-4986-a169-4d1fe445cd52"
@@ -520,22 +862,6 @@ deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 version = "1.11.0"
 
-[[deps.Distributions]]
-deps = ["AliasTables", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "03aa5d44647eaec98e1920635cdfed5d5560a8b9"
-uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.117"
-
-    [deps.Distributions.extensions]
-    DistributionsChainRulesCoreExt = "ChainRulesCore"
-    DistributionsDensityInterfaceExt = "DensityInterface"
-    DistributionsTestExt = "Test"
-
-    [deps.Distributions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    DensityInterface = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
-    Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
 git-tree-sha1 = "2fb1e02f2b635d0845df5d7c167fec4dd739b00d"
@@ -545,7 +871,16 @@ version = "0.9.3"
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-version = "1.7.0"
+version = "1.6.0"
+
+[[deps.EnzymeCore]]
+git-tree-sha1 = "0cdb7af5c39e92d78a0ee8d0a447d32f7593137e"
+uuid = "f151be2c-9106-41f4-ab19-57ee4f262869"
+version = "0.8.8"
+weakdeps = ["Adapt"]
+
+    [deps.EnzymeCore.extensions]
+    AdaptExt = "Adapt"
 
 [[deps.FLoops]]
 deps = ["BangBang", "Compat", "FLoopsBase", "InitialValues", "JuliaVariables", "MLStyle", "Serialization", "Setfield", "Transducers"]
@@ -568,12 +903,16 @@ deps = ["LinearAlgebra"]
 git-tree-sha1 = "6a70198746448456524cb442b8af316927ff3e1a"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "1.13.0"
-weakdeps = ["PDMats", "SparseArrays", "Statistics"]
 
     [deps.FillArrays.extensions]
     FillArraysPDMatsExt = "PDMats"
     FillArraysSparseArraysExt = "SparseArrays"
     FillArraysStatisticsExt = "Statistics"
+
+    [deps.FillArrays.weakdeps]
+    PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
@@ -582,10 +921,10 @@ uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.5"
 
 [[deps.Flux]]
-deps = ["Adapt", "ChainRulesCore", "Compat", "Functors", "LinearAlgebra", "MLDataDevices", "MLUtils", "MacroTools", "NNlib", "OneHotArrays", "Optimisers", "Preferences", "ProgressLogging", "Random", "Reexport", "Setfield", "SparseArrays", "SpecialFunctions", "Statistics", "Zygote"]
-git-tree-sha1 = "df520a0727f843576801a0294f5be1a94be28e23"
+deps = ["Adapt", "ChainRulesCore", "Compat", "EnzymeCore", "Functors", "LinearAlgebra", "MLDataDevices", "MLUtils", "MacroTools", "NNlib", "OneHotArrays", "Optimisers", "Preferences", "ProgressLogging", "Random", "Reexport", "Setfield", "SparseArrays", "SpecialFunctions", "Statistics", "Zygote"]
+git-tree-sha1 = "49d213a90b159c74e9fc2b53162b5f699b6f3516"
 uuid = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-version = "0.14.25"
+version = "0.16.3"
 
     [deps.Flux.extensions]
     FluxAMDGPUExt = "AMDGPU"
@@ -603,6 +942,11 @@ version = "0.14.25"
     NCCL = "3fe64909-d7a1-4096-9b7d-7a0f12cf0f6b"
     cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
+[[deps.Format]]
+git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
+uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
+version = "1.3.7"
+
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
 git-tree-sha1 = "a2df1b776752e3f344e5116c06d75a10436ab853"
@@ -614,10 +958,10 @@ weakdeps = ["StaticArrays"]
     ForwardDiffStaticArraysExt = "StaticArrays"
 
 [[deps.Functors]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "64d8e93700c7a3f28f717d265382d52fac9fa1c1"
+deps = ["Compat", "ConstructionBase", "LinearAlgebra", "Random"]
+git-tree-sha1 = "60a0339f28a233601cb74468032b5c302d5067de"
 uuid = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
-version = "0.4.12"
+version = "0.5.2"
 
 [[deps.Future]]
 deps = ["Random"]
@@ -636,16 +980,34 @@ git-tree-sha1 = "83cf05ab16a73219e5f6bd1bdfa9848fa24ac627"
 uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
 version = "0.2.0"
 
+[[deps.HDF5]]
+deps = ["Compat", "HDF5_jll", "Libdl", "MPIPreferences", "Mmap", "Preferences", "Printf", "Random", "Requires", "UUIDs"]
+git-tree-sha1 = "e856eef26cf5bf2b0f95f8f4fc37553c72c8641c"
+uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+version = "0.17.2"
+
+    [deps.HDF5.extensions]
+    MPIExt = "MPI"
+
+    [deps.HDF5.weakdeps]
+    MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+
+[[deps.HDF5_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "LibCURL_jll", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "OpenSSL_jll", "TOML", "Zlib_jll", "libaec_jll"]
+git-tree-sha1 = "e94f84da9af7ce9c6be049e9067e511e17ff89ec"
+uuid = "0234f1f7-429e-5d53-9886-15a909be8d59"
+version = "1.14.6+0"
+
 [[deps.HashArrayMappedTries]]
 git-tree-sha1 = "2eaa69a7cab70a52b9687c8bf950a5a93ec895ae"
 uuid = "076d061b-32b6-4027-95e0-9a2c6f6d7e74"
 version = "0.2.0"
 
-[[deps.HypergeometricFunctions]]
-deps = ["LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
-git-tree-sha1 = "2bd56245074fab4015b9174f24ceba8293209053"
-uuid = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
-version = "0.3.27"
+[[deps.Hwloc_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "f93a9ce66cd89c9ba7a4695a47fd93b4c6bc59fa"
+uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
+version = "2.12.0+0"
 
 [[deps.Hyperscript]]
 deps = ["Test"]
@@ -715,14 +1077,9 @@ version = "0.21.4"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "4bf4b400a8234cff0f177da4a160a90296159ce9"
+git-tree-sha1 = "a434e811d10e7cbf4f0674285542e697dca605d0"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.9.41"
-
-[[deps.JuliaSyntaxHighlighting]]
-deps = ["StyledStrings"]
-uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
-version = "1.12.0"
+version = "0.9.42"
 
 [[deps.JuliaVariables]]
 deps = ["MLStyle", "NameResolution"]
@@ -735,16 +1092,12 @@ deps = ["Adapt", "Atomix", "InteractiveUtils", "MacroTools", "PrecompileTools", 
 git-tree-sha1 = "80d268b2f4e396edc5ea004d1e0f569231c71e9e"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 version = "0.9.34"
+weakdeps = ["EnzymeCore", "LinearAlgebra", "SparseArrays"]
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
     LinearAlgebraExt = "LinearAlgebra"
     SparseArraysExt = "SparseArrays"
-
-    [deps.KernelAbstractions.weakdeps]
-    EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
-    LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Unicode"]
@@ -769,6 +1122,22 @@ git-tree-sha1 = "dda21b8cbd6a6c40d9d02a73230f9d70fed6918c"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.4.0"
 
+[[deps.Latexify]]
+deps = ["Format", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
+git-tree-sha1 = "cd714447457c660382fe634710fb56eb255ee42e"
+uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
+version = "0.16.6"
+
+    [deps.Latexify.extensions]
+    DataFramesExt = "DataFrames"
+    SparseArraysExt = "SparseArrays"
+    SymEngineExt = "SymEngine"
+
+    [deps.Latexify.weakdeps]
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
+
 [[deps.LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
 uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
@@ -780,24 +1149,24 @@ uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
 version = "0.6.4"
 
 [[deps.LibCURL_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "OpenSSL_jll", "Zlib_jll", "nghttp2_jll"]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "8.15.0+0"
+version = "8.6.0+0"
 
 [[deps.LibGit2]]
-deps = ["LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 version = "1.11.0"
 
 [[deps.LibGit2_jll]]
-deps = ["Artifacts", "LibSSH2_jll", "Libdl", "OpenSSL_jll"]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
 uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
-version = "1.9.0+0"
+version = "1.7.2+0"
 
 [[deps.LibSSH2_jll]]
-deps = ["Artifacts", "Libdl", "OpenSSL_jll"]
+deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.11.3+1"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -806,7 +1175,7 @@ version = "1.11.0"
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-version = "1.12.0"
+version = "1.11.0"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -834,6 +1203,12 @@ git-tree-sha1 = "688d6d9e098109051ae33d126fcfc88c4ce4a021"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
 version = "3.1.0"
 
+[[deps.MAT]]
+deps = ["BufferedStreams", "CodecZlib", "HDF5", "SparseArrays"]
+git-tree-sha1 = "1d2dd9b186742b0f317f2530ddcbf00eebb18e96"
+uuid = "23992714-dd62-5051-b70f-ba57cb901cac"
+version = "0.10.7"
+
 [[deps.MIMEs]]
 git-tree-sha1 = "1833212fd6f580c20d4291da9c1b4e8a655b128e"
 uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
@@ -847,15 +1222,16 @@ version = "1.0.0"
 
 [[deps.MLDataDevices]]
 deps = ["Adapt", "Compat", "Functors", "Preferences", "Random"]
-git-tree-sha1 = "85b47bc5a8bf0c886286638585df3bec7c9f8269"
+git-tree-sha1 = "1326836c4c845cfabc542b658c8686f0c31a9911"
 uuid = "7e8f7934-dd98-4c1a-8fe8-92b47a384d40"
-version = "1.5.3"
+version = "1.9.1"
 
     [deps.MLDataDevices.extensions]
     MLDataDevicesAMDGPUExt = "AMDGPU"
     MLDataDevicesCUDAExt = "CUDA"
     MLDataDevicesChainRulesCoreExt = "ChainRulesCore"
     MLDataDevicesChainRulesExt = "ChainRules"
+    MLDataDevicesComponentArraysExt = "ComponentArrays"
     MLDataDevicesFillArraysExt = "FillArrays"
     MLDataDevicesGPUArraysExt = "GPUArrays"
     MLDataDevicesMLUtilsExt = "MLUtils"
@@ -875,6 +1251,7 @@ version = "1.5.3"
     CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
     ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
     FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
     GPUArrays = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
     MLUtils = "f1d291b0-491e-4a28-83b9-f70985020b54"
@@ -900,21 +1277,50 @@ git-tree-sha1 = "6963295133aaa789f5fb18a6dd276c420793cf43"
 uuid = "f1d291b0-491e-4a28-83b9-f70985020b54"
 version = "0.4.7"
 
+[[deps.MPICH_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
+git-tree-sha1 = "3aa3210044138a1749dbd350a9ba8680869eb503"
+uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
+version = "4.3.0+1"
+
+[[deps.MPIPreferences]]
+deps = ["Libdl", "Preferences"]
+git-tree-sha1 = "c105fe467859e7f6e9a852cb15cb4301126fac07"
+uuid = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
+version = "0.1.11"
+
+[[deps.MPItrampoline_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
+git-tree-sha1 = "ff91ca13c7c472cef700f301c8d752bc2aaff1a8"
+uuid = "f1f71cc9-e9ae-5b93-9b94-4fe0e1ad3748"
+version = "5.5.3+0"
+
 [[deps.MacroTools]]
 git-tree-sha1 = "72aebe0b5051e5143a079a4685a46da330a40472"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.5.15"
 
 [[deps.Markdown]]
-deps = ["Base64", "JuliaSyntaxHighlighting", "StyledStrings"]
+deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 version = "1.11.0"
+
+[[deps.MbedTLS_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+version = "2.28.6+0"
 
 [[deps.MicroCollections]]
 deps = ["Accessors", "BangBang", "InitialValues"]
 git-tree-sha1 = "44d32db644e84c75dab479f1bc15ee76a1a3618f"
 uuid = "128add7d-3638-4c79-886c-908ea0c25c34"
 version = "0.2.0"
+
+[[deps.MicrosoftMPI_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "bc95bf4149bf535c09602e3acdf950d9b4376227"
+uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
+version = "10.1.4+3"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -928,13 +1334,13 @@ version = "1.11.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.11.4"
+version = "2023.12.12"
 
 [[deps.NNlib]]
 deps = ["Adapt", "Atomix", "ChainRulesCore", "GPUArraysCore", "KernelAbstractions", "LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "bdc9d30f151590aca0af22690f5ab7dc18a551cb"
+git-tree-sha1 = "e3d9a41f0e892d070d1a2a9569d73f29b3e321e3"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
-version = "0.9.27"
+version = "0.9.28"
 
     [deps.NNlib.extensions]
     NNlibAMDGPUExt = "AMDGPU"
@@ -943,6 +1349,7 @@ version = "0.9.27"
     NNlibEnzymeCoreExt = "EnzymeCore"
     NNlibFFTWExt = "FFTW"
     NNlibForwardDiffExt = "ForwardDiff"
+    NNlibSpecialFunctionsExt = "SpecialFunctions"
 
     [deps.NNlib.weakdeps]
     AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
@@ -950,6 +1357,7 @@ version = "0.9.27"
     EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
     FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
     ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+    SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
     cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [[deps.NaNMath]]
@@ -966,7 +1374,7 @@ version = "0.1.5"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-version = "1.3.0"
+version = "1.2.0"
 
 [[deps.OneHotArrays]]
 deps = ["Adapt", "ChainRulesCore", "Compat", "GPUArraysCore", "LinearAlgebra", "NNlib"]
@@ -977,17 +1385,24 @@ version = "0.2.6"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.29+0"
+version = "0.3.27+1"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.7+0"
+version = "0.8.1+2"
+
+[[deps.OpenMPI_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
+git-tree-sha1 = "da913f03f17b449951e0461da960229d4a3d1a8c"
+uuid = "fe0851c0-eecd-5654-98d4-656369965a5c"
+version = "5.0.7+1"
 
 [[deps.OpenSSL_jll]]
-deps = ["Artifacts", "Libdl"]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "a9697f1d06cc3eb3fb3ad49cc67f2cfabaac31ea"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.5.4+0"
+version = "3.0.16+0"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
@@ -996,21 +1411,38 @@ uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.6+0"
 
 [[deps.Optimisers]]
-deps = ["ChainRulesCore", "Functors", "LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "c9ff5c686240c31eb8570b662dd1f66f4b183116"
+deps = ["ChainRulesCore", "ConstructionBase", "Functors", "LinearAlgebra", "Random", "Statistics"]
+git-tree-sha1 = "c57a1a58e29a017a2b07e78d075385b981942430"
 uuid = "3bd65402-5787-11e9-1adc-39752487f4e2"
-version = "0.3.4"
+version = "0.4.5"
+weakdeps = ["Adapt", "EnzymeCore"]
+
+    [deps.Optimisers.extensions]
+    OptimisersAdaptExt = ["Adapt"]
+    OptimisersEnzymeCoreExt = "EnzymeCore"
 
 [[deps.OrderedCollections]]
 git-tree-sha1 = "cc4054e898b852042d7b503313f7ad03de99c3dd"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.8.0"
 
-[[deps.PDMats]]
-deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "966b85253e959ea89c53a9abebbf2e964fbf593b"
-uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.32"
+[[deps.PGFPlotsX]]
+deps = ["ArgCheck", "Dates", "DefaultApplication", "DocStringExtensions", "MacroTools", "OrderedCollections", "Parameters", "Requires", "Tables"]
+git-tree-sha1 = "e5df51ffc01f8771d94c8db2d164be1f6927849c"
+uuid = "8314cec4-20b6-5062-9cdb-752b83310925"
+version = "1.6.2"
+
+    [deps.PGFPlotsX.extensions]
+    ColorsExt = "Colors"
+    ContourExt = "Contour"
+    MeasurementsExt = "Measurements"
+    StatsBaseExt = "StatsBase"
+
+    [deps.PGFPlotsX.weakdeps]
+    Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+    Contour = "d38c429a-6771-53c6-b99e-75d170b6e991"
+    Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
+    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [[deps.Parameters]]
 deps = ["OrderedCollections", "UnPack"]
@@ -1027,7 +1459,7 @@ version = "2.8.1"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.12.1"
+version = "1.11.0"
 weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]
@@ -1064,18 +1496,16 @@ uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 version = "0.1.6"
 
 [[deps.PlutoPlotly]]
-deps = ["AbstractPlutoDingetjes", "BaseDirs", "Colors", "Dates", "Downloads", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "Pkg", "PlotlyBase", "Reexport", "TOML"]
-git-tree-sha1 = "1ae939782a5ce9a004484eab5416411c7190d3ce"
+deps = ["AbstractPlutoDingetjes", "Dates", "HypertextLiteral", "InteractiveUtils", "LaTeXStrings", "Markdown", "PlotlyBase", "PlutoUI", "Reexport"]
+git-tree-sha1 = "b470931aa2a8112c8b08e66ea096c6c62c60571e"
 uuid = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
-version = "0.4.6"
+version = "0.3.4"
 
-    [deps.PlutoPlotly.extensions]
-    PlotlyKaleidoExt = "PlotlyKaleido"
-    UnitfulExt = "Unitful"
-
-    [deps.PlutoPlotly.weakdeps]
-    PlotlyKaleido = "f2990250-8cf9-495f-b13a-cce12b45703c"
-    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+[[deps.PlutoTeachingTools]]
+deps = ["Downloads", "HypertextLiteral", "Latexify", "Markdown", "PlutoLinks", "PlutoUI"]
+git-tree-sha1 = "8252b5de1f81dc103eb0293523ddf917695adea1"
+uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
+version = "0.3.1"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
@@ -1116,20 +1546,8 @@ git-tree-sha1 = "1d36ef11a9aaf1e8b74dacc6a731dd1de8fd493d"
 uuid = "43287f4e-b6f4-7ad1-bb20-aadabca52c3d"
 version = "1.3.0"
 
-[[deps.QuadGK]]
-deps = ["DataStructures", "LinearAlgebra"]
-git-tree-sha1 = "9da16da70037ba9d701192e27befedefb91ec284"
-uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.11.2"
-
-    [deps.QuadGK.extensions]
-    QuadGKEnzymeExt = "Enzyme"
-
-    [deps.QuadGK.weakdeps]
-    Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-
 [[deps.REPL]]
-deps = ["InteractiveUtils", "JuliaSyntaxHighlighting", "Markdown", "Sockets", "StyledStrings", "Unicode"]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 version = "1.11.0"
 
@@ -1151,9 +1569,9 @@ version = "1.2.2"
 
 [[deps.Requires]]
 deps = ["UUIDs"]
-git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
+git-tree-sha1 = "62389eeff14780bfe55195b7204c0d8738436d64"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
-version = "1.3.0"
+version = "1.3.1"
 
 [[deps.Revise]]
 deps = ["CodeTracking", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "REPL", "Requires", "UUIDs", "Unicode"]
@@ -1164,18 +1582,6 @@ weakdeps = ["Distributed"]
 
     [deps.Revise.extensions]
     DistributedExt = "Distributed"
-
-[[deps.Rmath]]
-deps = ["Random", "Rmath_jll"]
-git-tree-sha1 = "852bd0f55565a9e973fcfee83a84413270224dc4"
-uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
-version = "0.8.0"
-
-[[deps.Rmath_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "58cdd8fb2201a6267e1db87ff148dd6c1dbd8ad8"
-uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
-version = "0.5.1+0"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -1221,7 +1627,7 @@ version = "1.2.1"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-version = "1.12.0"
+version = "1.11.0"
 
 [[deps.SparseInverseSubset]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -1247,9 +1653,9 @@ version = "0.1.15"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "e3be13f448a43610f978d29b7adf78c76022467a"
+git-tree-sha1 = "0feb6b9031bd5c51f9072393eb5ab3efd31bf9e4"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.12"
+version = "1.9.13"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -1283,17 +1689,6 @@ git-tree-sha1 = "29321314c920c26684834965ec2ce0dacc9cf8e5"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.4"
 
-[[deps.StatsFuns]]
-deps = ["HypergeometricFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "b423576adc27097764a90e163157bcfc9acf0f46"
-uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "1.3.2"
-weakdeps = ["ChainRulesCore", "InverseFunctions"]
-
-    [deps.StatsFuns.extensions]
-    StatsFunsChainRulesCoreExt = "ChainRulesCore"
-    StatsFunsInverseFunctionsExt = "InverseFunctions"
-
 [[deps.StructArrays]]
 deps = ["ConstructionBase", "DataAPI", "Tables"]
 git-tree-sha1 = "5a3a31c41e15a1e042d60f2f4942adccba05d3c9"
@@ -1319,7 +1714,7 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "7.8.3+2"
+version = "7.7.0+0"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1353,6 +1748,11 @@ version = "0.1.1"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
+
+[[deps.TranscodingStreams]]
+git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
+uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+version = "0.11.3"
 
 [[deps.Transducers]]
 deps = ["Accessors", "ArgCheck", "BangBang", "Baselet", "CompositionsBase", "ConstructionBase", "DefineSingletons", "Distributed", "InitialValues", "Logging", "Markdown", "MicroCollections", "Requires", "SplittablesBase", "Tables"]
@@ -1412,13 +1812,13 @@ weakdeps = ["LLVM"]
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.3.1+2"
+version = "1.2.13+1"
 
 [[deps.Zygote]]
 deps = ["AbstractFFTs", "ChainRules", "ChainRulesCore", "DiffRules", "Distributed", "FillArrays", "ForwardDiff", "GPUArrays", "GPUArraysCore", "IRTools", "InteractiveUtils", "LinearAlgebra", "LogExpFunctions", "MacroTools", "NaNMath", "PrecompileTools", "Random", "Requires", "SparseArrays", "SpecialFunctions", "Statistics", "ZygoteRules"]
-git-tree-sha1 = "0b3c944f5d2d8b466c5d20a84c229c17c528f49e"
+git-tree-sha1 = "dabc8bf48149b0220010c2d3e555b0ca84400ce1"
 uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
-version = "0.6.75"
+version = "0.7.4"
 
     [deps.Zygote.extensions]
     ZygoteColorsExt = "Colors"
@@ -1436,55 +1836,95 @@ git-tree-sha1 = "434b3de333c75fc446aa0d19fc394edafd07ab08"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.7"
 
+[[deps.libaec_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "f5733a5a9047722470b95a81e1b172383971105c"
+uuid = "477f73a3-ac25-53e9-8cc3-50b2fa2566f0"
+version = "1.1.3+0"
+
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.15.0+0"
+version = "5.11.0+0"
 
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.64.0+1"
+version = "1.59.0+0"
 
 [[deps.p7zip_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.7.0+0"
+version = "17.4.0+2"
 """
 
 # ╔═╡ Cell order:
-# ╠═403a7451-b633-4f84-8ace-44c011d3d9ae
-# ╟─77991f90-5945-4460-bc0f-791ba40a3bfe
-# ╟─e4554baf-cd2e-4746-94a1-394295ae433b
-# ╠═074f3b47-07e3-4c49-945c-30031a1cb05e
-# ╠═02f43452-e282-11ee-1f91-b9156211e10b
-# ╟─8a9a4dba-d8da-4403-be02-67286383f500
-# ╠═b7914fd2-6dfc-45b6-a7c5-8f4d1e3f65e0
-# ╠═e6608faa-d490-4f4b-8083-ea5f99b76d2a
-# ╠═e1f9fdce-1de7-40eb-af35-8c712b5af665
-# ╟─d06240cd-26da-4fc9-912e-c44b129f25b9
-# ╠═94a392fc-9b4d-4ceb-8dda-5ac489974e43
-# ╟─5fb67e83-90d7-4f42-9070-e2949b4de776
-# ╠═7ec58dd0-fd0c-4937-ae52-2d0a5252a574
-# ╠═203eff4a-3b41-475f-b1fa-2c6fd8276c75
-# ╟─9f1cbb44-e142-43be-8997-76cef329f562
-# ╠═0eb2daf1-f9dd-4489-8e13-74d6baab2c43
-# ╟─72a68c72-6afd-4af0-a8e2-c8962cc42949
-# ╠═403c9123-9abd-4732-b12e-40c0ab2d9624
-# ╠═a1dead6b-2900-4565-b571-c55cd28b2216
-# ╠═1af2dd91-b941-44d1-b672-c3c17c52ec6f
-# ╠═5eeeb73e-3b82-4c91-acfd-73a3c4f64ef3
-# ╟─cf3f542e-574f-4005-a6e9-6a41710943cd
-# ╟─7009d7ae-91a6-4499-89ea-2dfb2d2874b0
-# ╟─6c84542f-6392-4acb-9cfb-f526a1e58586
-# ╠═c95c3d37-9760-41de-a64f-6ce1f6bdf982
-# ╟─a8137b75-bde6-4914-8969-8074485ba269
-# ╠═c20e9ee0-f951-4c04-98b1-0ca901c40fb8
-# ╠═9c513a1b-9965-4f10-ad34-4da47f901594
-# ╟─ab659f09-4549-406a-a878-8a0289e5aded
-# ╠═07d725f5-6c77-4788-a37f-b17d7334a15a
-# ╠═d95e5eea-bc1d-47ad-8dd3-bb021b3ddb40
-# ╠═5e8c668c-9351-4b11-bf2e-394a157a445f
-# ╟─b4be38ab-4bf4-46bf-a815-c944674d4f2a
+# ╟─b558420f-78f5-42cd-a77f-f82ace74fdf4
+# ╠═6337cae9-4e8b-47a9-a235-5513a4239e90
+# ╟─8ecf7c28-81f0-40e2-8858-3d8dcf43e6e7
+# ╟─2de60ebc-f486-434f-921d-e56ca1858668
+# ╟─1830d036-caca-4303-a37d-df0af6cdce85
+# ╟─b289c46d-909c-4cea-b2b8-e415d23c39b9
+# ╠═38d6f1c4-aa16-47b4-bf11-b859f96153fc
+# ╟─b951a822-43b6-4f40-9801-038bb6d48c83
+# ╟─8da1878d-b095-4c04-b74b-16b01d533b60
+# ╟─bf7e8696-0f93-4e0f-bfdc-233606f0c104
+# ╟─24edcbfb-cf12-4820-9aad-94ad131594e5
+# ╟─9c84d4a7-67f0-41e2-8e79-f8a4c67fc871
+# ╟─c097520c-5523-45d6-931c-1981779401fb
+# ╟─dfe7f96e-ea3d-4897-a509-b492a76aabd3
+# ╠═82802806-062e-4bb4-998c-6486d47d7c93
+# ╠═4e84a3da-e0d8-40cb-a7f3-20045c1e553e
+# ╠═40dfaa16-ddb5-45dc-a3b5-c15833251690
+# ╠═d4e600cd-ddae-4e1c-a866-4e6dc2d45fab
+# ╠═7205c2f2-7cd3-43f3-b118-6b2d7cd264b2
+# ╟─16cb10e0-062c-44e2-a590-5089cb42b906
+# ╠═b0d5e340-4e96-4e82-843b-1b852d8dc998
+# ╠═3dff8826-5856-41ce-83e6-4248f69254f9
+# ╟─563199e1-5824-4269-ac4c-8f431aff2a15
+# ╠═20f446d5-d308-44c3-94d2-22c1b9e4f9eb
+# ╟─e603c18a-61e0-4a05-9a30-60db6f3b2329
+# ╠═b543ac43-165b-4073-ab7c-26af4c354ef9
+# ╠═19704724-ea33-4e9f-82ce-ba510df8cbed
+# ╠═4f4f65d8-d2ba-4623-82d7-a9285ab305d8
+# ╠═97bc9368-c075-4dc7-baab-10f3fad29cf6
+# ╠═d4d60e04-03ee-4f4f-a60d-42051765f282
+# ╠═f2976b0c-16a3-43b9-abbf-064b9b8ed0c0
+# ╠═f3e26da4-f228-4d47-9b1b-f704ad679979
+# ╠═867e36e9-2c6e-4d88-b37c-e7af9b905a6e
+# ╠═dadf6b6b-2f20-45f1-ae40-5c8e4d1b221c
+# ╟─92377dd7-d87d-4876-905c-2ed929373e04
+# ╟─48bc8aec-a524-41f3-8a6d-e7d0a8e948e8
+# ╠═cd0ff342-2b73-497f-bc05-315535a19d6a
+# ╠═b5c5655b-a21a-48d8-aadc-42b599dd3913
+# ╠═448c68bc-e3e1-48d4-bb3a-f1476a874b8e
+# ╠═d24dbfa8-2248-4ed5-8315-4578f810aa9d
+# ╠═558abb89-6c28-4aa0-a517-bd858a2987ab
+# ╠═2166aad7-654c-4f74-be80-c3c668082b29
+# ╠═e9b49e45-8dd4-4099-a90a-bba1961f41f3
+# ╠═6ce37aac-308c-438d-9faf-d459b5d59e49
+# ╠═403f14b3-cec7-4665-988c-4f7451b843b8
+# ╠═c741237f-3f7f-437c-bfe1-58e55f6f5208
+# ╠═fdfeaa22-53af-47dc-b80d-2f5ef8056fb4
+# ╠═55c6826d-b5ec-4fad-aff0-e03acd82f7d8
+# ╟─fb3d3acb-6cd6-4c21-8264-7812bc8fadaa
+# ╠═b61aa604-7d3a-4f37-964d-2855814da34b
+# ╠═56699515-93fb-48a4-81ec-e829a4d5d8bf
+# ╠═a68f8bd2-edc5-4bda-a5a0-610f45e507ab
+# ╠═37848c52-9eab-45c8-94f2-079c2fca1890
+# ╠═103b7a79-0481-40d0-9376-0fcb188310e2
+# ╠═b87c44f1-ea75-4591-a530-a8b7007fa829
+# ╠═279ae9fd-db44-49d7-bb2e-36e79a4bc1b8
+# ╟─54cf2024-0805-44fc-b47d-28f9ee5a98b4
+# ╠═a84cf814-da60-11ee-2e7f-ab47f6aa1f96
+# ╠═8564af9c-eb34-4697-a6ea-65caf0f92236
+# ╟─06834053-704e-4285-9b6f-2861ef903a73
+# ╠═4ac4554f-51fd-427f-b4ff-32f45990bf12
+# ╠═e92f9986-2f7d-4a42-9d4d-652629c4fcf0
+# ╠═a6034db6-a6f0-4ad2-a9da-77b9c34ae572
+# ╠═33477bef-ab18-479d-ba5d-e6d1391bb3ea
+# ╠═ea962bb4-2eb9-4291-a87c-382eb6e13cdd
+# ╠═d333d01e-b38b-4863-b9b3-f25891c55484
+# ╠═9da24bca-a159-4774-a906-c1897c4cd89d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

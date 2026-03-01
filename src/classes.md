@@ -36,17 +36,20 @@ main a img {
 
 # Probabilistic Inverse Problems
 
-1. Bayesian inference for inverse problems; mathematical formulation: posterior = likelihood × prior / evidence.
-2. Uncertainty quantification.
-3. Monte Carlo methods.
+1. What is uncertainty quantification?
+2. Bayesian inference for inverse problems; mathematical formulation: posterior = likelihood × prior / evidence.
+3. Variational inference; evidence lower bound
+4. Metropolis criteria and Monte Carlo methods.
 
 # Learning Problems
 
-1. Learning problems; shallow neural networks.
-2. Why deep learning; loss functions; maximum likelihood approach for regression and classification problems.
-3. Bias-variance tradeoff.
+1. Shallow neural networks as universal approximators.
+2. Why deep learning? Loss functions and the maximum likelihood approach for regression and classification problems.
+3. Bias-variance tradeoff. Model selection.
 4. K-means clustering; Gaussian mixture models.
-5. Application of unsupervised learning and generative AI in Earth sciences: variational autoencoders & diffusion models.
+5. Normalizing flows and using them for variational inference.
+6. Application of unsupervised learning and generative AI in Earth sciences: variational autoencoders & diffusion models.
+7. Introduction to autoregressive and time-series forecasting models.
 
 ## Examples
 
