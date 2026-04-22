@@ -1,0 +1,84 @@
+\documentclass[tikz]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+
+\begin{document}
+\begin{tikzpicture}[scale=0.95]
+\begin{tikzpicture}[scale=1.0]
+  \def\gridwidth{6}
+  \def\gridheight{3.6}
+  \def\margwidth{1.2}
+    \pgfmathsetmacro{\xlow}{1.2}
+    \pgfmathsetmacro{\xhigh}{2.4}
+
+  % highlight observed column
+    \fill[yellow!20, opacity=0.3] (\xlow,0) rectangle (\xhigh,\gridheight);
+
+  % main grid
+  \draw[thick, white] (0,0) rectangle (\gridwidth,\gridheight);
+  \foreach \x in {1.2,2.4,3.6,4.8} {\draw[thick, white] (\x,0) -- (\x,\gridheight);}
+  \foreach \y in {1.2,2.4} {\draw[thick, white] (0,\y) -- (\gridwidth,\y);}
+
+  % axes labels
+  \node[white, rotate=90, anchor=north east] at (0.3,-0.1) {very low};
+\node[white, rotate=90, anchor=north east] at (1.5,-0.1) {low};
+\node[white, rotate=90, anchor=north east] at (2.7,-0.1) {medium};
+\node[white, rotate=90, anchor=north east] at (3.9,-0.1) {high};
+\node[white, rotate=90, anchor=north east] at (5.1,-0.1) {very high};
+    \node[white] at (3.0, -0.7) {$x$ (travel time)};
+  \node[white, anchor=west] at (\gridwidth+0.15,3.0) {thin};
+  \node[white, anchor=west] at (\gridwidth+0.15,1.8) {medium};
+  \node[white, anchor=west] at (\gridwidth+0.15,0.6) {thick};
+    \node[white, rotate=90] at (\gridwidth + \margwidth + 0.4, 1.8) {$z$ (thickness)};
+
+  % points
+  \fill[cyan!80, opacity=0.7] (2.32, 2.98) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.36, 3.06) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.34, 2.9) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.32, 2.96) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.41, 3.12) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.4, 2.88) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.37, 3.06) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (2.47, 2.96) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.81, 1.99) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.88, 1.93) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.76, 1.97) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.9, 2.01) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.86, 2.09) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.77, 1.9) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.84, 1.98) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (1.74, 2.07) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.56, 0.98) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.54, 1.09) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.68, 0.9) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.58, 1.05) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.59, 1.05) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.64, 1.01) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.68, 0.89) circle (2.2pt);
+\fill[cyan!80, opacity=0.7] (0.52, 0.97) circle (2.2pt);
+
+  % prior (left)
+  \begin{scope}[shift={(-\margwidth,0)}]
+    \fill[red!70, opacity=0.7] (0,2.4) rectangle (0.4,3.6);
+    \fill[red!70, opacity=0.7] (0,1.2) rectangle (0.4,2.4);
+    \fill[red!70, opacity=0.7] (0,0.0) rectangle (0.4,1.2);
+    \draw[white, thick] (0,0) -- (0,\gridheight);
+    \node[white, font=\tiny, rotate=90, anchor=south] at (0.2, -0.4) {prior $p(z)$};
+  \end{scope}
+
+  % posterior (right)
+  \begin{scope}[shift={(\gridwidth,0)}]
+    \fill[yellow!70, opacity=0.7] (0,2.4) rectangle (0.171,3.5999999999999996);
+\fill[yellow!70, opacity=0.7] (0,1.2) rectangle (0.229,2.4);
+\fill[yellow!70, opacity=0.7] (0,0.0) rectangle (0.0,1.2);
+    \draw[white, thick] (0,0) -- (0,\gridheight);
+        \node[white, font=\tiny, rotate=90, anchor=south] at (0.2, -0.4) {posterior $p(z|x_{\mathrm{obs}})$};
+  \end{scope}
+\end{tikzpicture}
+
+\end{tikzpicture}
+
+\end{document}

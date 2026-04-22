@@ -1,0 +1,48 @@
+\documentclass[tikz]{standalone}
+
+\begin{document}
+\begin{tikzpicture}[scale=0.95]
+\begin{tikzpicture}[scale=1.0]
+  \def\gridwidth{6}
+  \def\gridheight{3.6}
+  \def\margwidth{1.2}
+
+  % highlight observed column
+  \fill[yellow!20, opacity=0.3] ($(x_low),0) rectangle ($(x_high),\gridheight);
+
+  % main grid
+  \draw[thick, white] (0,0) rectangle (\gridwidth,\gridheight);
+  \foreach \x in {1.2,2.4,3.6,4.8} {\draw[thick, white] (\x,0) -- (\x,\gridheight);}
+  \foreach \y in {1.2,2.4} {\draw[thick, white] (0,\y) -- (\gridwidth,\y);}
+
+  % axes labels
+  $(join(label_cmds, "\n"))
+  \node[white, font=\small] at (3.0, -0.7) {$x$ (travel time)};
+  \node[white, font=\tiny, anchor=west] at (\gridwidth+0.15,3.0) {thin};
+  \node[white, font=\tiny, anchor=west] at (\gridwidth+0.15,1.8) {medium};
+  \node[white, font=\tiny, anchor=west] at (\gridwidth+0.15,0.6) {thick};
+  \node[white, font=\small, rotate=90] at (\gridwidth + \margwidth + 0.4, 1.8) {$z$ (thickness)};
+
+  % points
+  $(join(point_cmds, "\n"))
+
+  % prior (left)
+  \begin{scope}[shift={(-\margwidth,0)}]
+    \fill[red!70, opacity=0.7] (0,2.4) rectangle (0.4,3.6);
+    \fill[red!70, opacity=0.7] (0,1.2) rectangle (0.4,2.4);
+    \fill[red!70, opacity=0.7] (0,0.0) rectangle (0.4,1.2);
+    \draw[white, thick] (0,0) -- (0,\gridheight);
+    \node[white, font=\tiny, rotate=90, anchor=south] at (0.2, -0.4) {prior $p(z)$};
+  \end{scope}
+
+  % posterior (right)
+  \begin{scope}[shift={(\gridwidth,0)}]
+    $(join(posterior_cmds, "\n"))
+    \draw[white, thick] (0,0) -- (0,\gridheight);
+    \node[white, font=\tiny, rotate=90, anchor=south] at (0.2, -0.4) {posterior $p(z|x_{\mathrm{obs}})$};
+  \end{scope}
+\end{tikzpicture}
+
+\end{tikzpicture}
+
+\end{document}

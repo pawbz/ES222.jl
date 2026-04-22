@@ -1,0 +1,60 @@
+\documentclass{standalone}
+\usepackage{tikz}
+\usepackage{adjustbox}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+\begin{adjustbox}{width=5cm,keepaspectratio}
+\begin{tikzpicture}[]
+$						  \\resizebox{10cm}{!}{%
+	\\begin{tikzpicture}[scale=1]
+  % Highlight selected cell
+  \\fill[orange!30, opacity=0.4] (1.2,2.4) rectangle (2.4,3.5999999999999996);
+  % Highlight selected row (z)
+  \\fill[red!20, opacity=0.2] (0,2.4) rectangle (6.0,3.5999999999999996);
+  % Highlight selected column (x)
+  \\fill[blue!20, opacity=0.2] (1.2,0) rectangle (2.4,3.6);
+  % Draw grid
+  \\draw[thick, white] (0,0) rectangle (6.0,3.6);
+  \\foreach \\x in {1.2,2.4,3.6,4.8} {\\draw[thick, white] (\\x,0) -- (\\x,3.6);}
+  \\foreach \\y in {1.2,2.4} {\\draw[thick, white] (0,\\y) -- (6.0,\\y);}
+  % Row labels (z)
+  \\node[white, anchor=east] at (-0.1,3.0) {thin};
+  \\node[white, anchor=east] at (-0.1,1.8) {medium};
+  \\node[white, anchor=east] at (-0.1,0.6) {thick};
+  % Column labels (x)
+  \\node[white, rotate=90, anchor=east] at (0.6,-0.15) {v.low};
+  \\node[white, rotate=90, anchor=east] at (1.8,-0.15) {low};
+  \\node[white, rotate=90, anchor=east] at (3.0,-0.15) {med};
+  \\node[white, rotate=90, anchor=east] at (4.2,-0.15) {high};
+  \\node[white, rotate=90, anchor=east] at (5.4,-0.15) {v.high};
+						  % Plot points
+						   % Probability formulas and values (right side)
+  \\node[white, anchor=west] at (6.5, 3.2) {
+    Selected: \$z=thin\$, \$x=low\$
+  };
+  \\node[white, anchor=west] at (6.5, 2.6) {
+    \$p(z,x) = 8/120 = 0.067\$
+  };
+  \\node[white, anchor=west] at (6.5, 2.1) {
+    \$p(z) = 40/120 = 0.333\$
+  };
+  \\node[white, anchor=west] at (6.5, 1.6) {
+    \$p(x) = 24/120 = 0.2\$
+  };
+  \\node[white, anchor=west] at (6.5, 1.1) {
+    \$p(x|z) = 8/40 = 0.2\$
+  }; 
+  \\node[white, anchor=west] at (6.5, 0.6) {
+    \$p(z|x) = 8/24 = 0.333\$
+  };	
+	\\end{tikzpicture}
+						  }
+$
+\end{tikzpicture}
+\end{adjustbox}
+\end{document}

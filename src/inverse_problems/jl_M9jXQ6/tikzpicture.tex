@@ -1,0 +1,22 @@
+\documentclass{standalone}
+\usepackage{tikz}
+\usepackage{adjustbox}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+\begin{adjustbox}{width=5cm,keepaspectratio}
+\begin{tikzpicture}[]
+$						  \\resizebox{10cm}{!}{%
+	\\begin{tikzpicture}[scale=1]
+  % Highlight selected cell
+  \\fill[orange!30, opacity=0.4] (1.2,2.4) rectangle (2.4,3.5999999999999996);
+	\\end{tikzpicture}
+						  }
+$
+\end{tikzpicture}
+\end{adjustbox}
+\end{document}

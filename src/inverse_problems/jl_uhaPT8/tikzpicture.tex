@@ -1,0 +1,71 @@
+\documentclass[tikz]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+\begin{tikzpicture}[]
+\begin{tikzpicture}[scale=1.1]
+  % Highlight selected cell
+  \fill[orange!30, opacity=0.4] (1.2,2.4) rectangle (2.4,3.5999999999999996);
+  
+  % Highlight selected row (z)
+  \fill[red!20, opacity=0.2] (0,2.4) rectangle (6.0,3.5999999999999996);
+  
+  % Highlight selected column (x)
+  \fill[blue!20, opacity=0.2] (1.2,0) rectangle (2.4,3.6);
+  
+  % Draw grid
+  \draw[thick, white] (0,0) rectangle (6.0,3.6);
+  \foreach \x in {1.2,2.4,3.6,4.8} {\draw[thick, white] (\x,0) -- (\x,3.6);}
+  \foreach \y in {1.2,2.4} {\draw[thick, white] (0,\y) -- (6.0,\y);}
+  
+  % Row labels (z)
+  \node[white, anchor=east] at (-0.1,3.0) {thin};
+  \node[white, anchor=east] at (-0.1,1.8) {medium};
+  \node[white, anchor=east] at (-0.1,0.6) {thick};
+  
+  % Column labels (x)
+  \node[white, rotate=90, anchor=east] at (0.6,-0.15) {v.low};
+  \node[white, rotate=90, anchor=east] at (1.8,-0.15) {low};
+  \node[white, rotate=90, anchor=east] at (3.0,-0.15) {med};
+  \node[white, rotate=90, anchor=east] at (4.2,-0.15) {high};
+  \node[white, rotate=90, anchor=east] at (5.4,-0.15) {v.high};
+  
+  % Plot points
+  \fill[cyan!60, opacity=0.6] (0.72, 2.96) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.58, 3.18) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.76, 2.7) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.7, 3.15) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.56, 2.82) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.75, 3.13) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.46, 2.79) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.61, 2.63) circle (1.5pt);;\fill[yellow, opacity=0.8] (1.6, 2.72) circle (2pt);;\fill[yellow, opacity=0.8] (1.73, 2.99) circle (2pt);;\fill[yellow, opacity=0.8] (1.42, 3.01) circle (2pt);;\fill[yellow, opacity=0.8] (1.53, 3.09) circle (2pt);;\fill[yellow, opacity=0.8] (1.71, 2.83) circle (2pt);;\fill[yellow, opacity=0.8] (1.74, 3.32) circle (2pt);;\fill[yellow, opacity=0.8] (1.64, 3.06) circle (2pt);;\fill[yellow, opacity=0.8] (1.64, 2.69) circle (2pt);;\fill[cyan!60, opacity=0.6] (3.2, 2.89) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.58, 2.62) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.15, 2.99) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.19, 2.7) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.02, 2.97) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.32, 2.71) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.82, 3.45) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.87, 3.21) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.43, 3.11) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.0, 2.84) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.24, 3.11) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.06, 2.65) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.82, 3.3) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.61, 2.75) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.34, 2.8) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.08, 3.31) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.57, 3.18) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.27, 2.61) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.13, 3.42) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.27, 3.25) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.59, 3.26) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.02, 3.18) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.04, 3.11) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.8, 2.94) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.03, 2.19) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.82, 1.72) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.84, 1.88) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.47, 1.43) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.78, 1.85) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.42, 1.83) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.9, 1.77) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.25, 1.75) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.35, 2.06) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.2, 1.59) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.58, 2.14) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.64, 1.91) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.93, 1.78) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.52, 2.07) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.57, 1.39) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.84, 2.11) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.36, 1.97) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.16, 2.09) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.35, 1.93) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.81, 1.67) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.08, 1.65) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.78, 1.64) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.87, 1.85) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.83, 2.17) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.97, 1.96) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.07, 2.2) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.39, 1.73) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.24, 1.46) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.5, 1.48) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.62, 1.59) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.54, 1.92) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.11, 2.02) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.29, 1.57) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.56, 2.09) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.01, 1.8) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.41, 1.66) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.85, 1.54) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.11, 1.84) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.12, 1.51) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.8, 1.37) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.57, 0.19) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.85, 0.58) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.19, 0.55) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.35, 0.59) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.47, 1.02) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.75, 0.23) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.87, 1.0) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (0.8, 0.89) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.61, 1.0) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.93, 0.81) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.45, 0.27) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.12, 0.76) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.13, 0.73) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.02, 0.28) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.55, 0.68) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (1.82, 0.28) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.55, 0.59) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.85, 0.8) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (2.66, 0.33) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.37, 0.55) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.23, 0.86) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.18, 0.92) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.03, 0.78) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.22, 0.85) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (3.78, 0.51) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.52, 0.97) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.26, 0.5) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.12, 0.36) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.18, 0.51) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.39, 0.81) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.45, 0.56) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.27, 0.23) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.06, 0.97) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.55, 0.59) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.7, 0.33) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.34, 0.85) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (4.98, 0.53) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.46, 0.85) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.01, 0.65) circle (1.5pt);;\fill[cyan!60, opacity=0.6] (5.1, 0.34) circle (1.5pt);
+  
+  % Probability formulas and values (right side)
+  \node[white, anchor=west, align=left] at (6.5, 3.2) {
+    \textbf{Selected:} \(z=\)thin, \(x=\)low
+  };
+  
+  \node[white, anchor=west, align=left] at (6.5, 2.6) {
+    \(p(z,x) = \frac{8}{120} = 0.067\)
+  };
+  
+  \node[white, anchor=west, align=left] at (6.5, 2.1) {
+    \(p(z) = \frac{40}{120} = 0.333\)
+  };
+  
+  \node[white, anchor=west, align=left] at (6.5, 1.6) {
+    \(p(x) = \frac{24}{120} = 0.2\)
+  };
+  
+  \node[white, anchor=west, align=left] at (6.5, 1.1) {
+    \(p(x|z) = \frac{8}{40} = 0.2\)
+  };
+  
+  \node[white, anchor=west, align=left] at (6.5, 0.6) {
+    \(p(z|x) = \frac{8}{24} = 0.333\)
+  };
+  
+  % Legend
+  \node[white, font=\small] at (3.0, -0.8) {Orange cell: joint \(p(z,x)\), Red row: marginal \(p(z)\), Blue col: marginal \(p(x)\)};
+\end{tikzpicture}
+
+\end{tikzpicture}
+
+\end{document}
